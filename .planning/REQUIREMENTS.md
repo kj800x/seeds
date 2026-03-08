@@ -15,8 +15,8 @@
 
 ### Inventory
 
-- [ ] **INVT-01**: User can view all seeds in their inventory with key details (name, variety, year, viability indicator)
-- [ ] **INVT-02**: User can view detailed seed info page showing all scraped packet data and images
+- [x] **INVT-01**: User can view all seeds in their inventory with key details (name, variety, year, viability indicator)
+- [x] **INVT-02**: User can view detailed seed info page showing all scraped packet data and images
 - [x] **INVT-03**: User can specify purchase year when adding a seed
 - [x] **INVT-04**: User can edit seed inventory entries (year, notes)
 - [x] **INVT-05**: User can delete seeds from inventory
@@ -90,8 +90,8 @@
 | INFR-01 | Phase 1 | Complete |
 | INFR-02 | Phase 1 | Complete |
 | INFR-03 | Phase 1 | Complete |
-| INVT-01 | Phase 2 | Pending |
-| INVT-02 | Phase 2 | Pending |
+| INVT-01 | Phase 2 | Complete |
+| INVT-02 | Phase 2 | Complete |
 | INVT-03 | Phase 2 | Complete |
 | INVT-04 | Phase 2 | Complete |
 | INVT-05 | Phase 2 | Complete |
