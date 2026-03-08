@@ -1,6 +1,6 @@
 use sqlx::SqlitePool;
 
-use super::models::{Seed, SeedImage};
+use super::models::{Seed, SeedImage, SeedPurchase};
 
 pub async fn list_seeds(pool: &SqlitePool) -> Result<Vec<Seed>, sqlx::Error> {
     sqlx::query_as::<_, Seed>("SELECT * FROM seeds ORDER BY created_at DESC")
@@ -58,8 +58,6 @@ pub struct NewSeed {
     pub raw_html: Option<String>,
     pub shopify_product_id: Option<i64>,
     pub tags_raw: Option<String>,
-    pub purchase_year: Option<i64>,
-    pub notes: Option<String>,
 }
 
 pub async fn insert_seed(pool: &SqlitePool, seed: &NewSeed) -> Result<i64, sqlx::Error> {
@@ -69,8 +67,8 @@ pub async fn insert_seed(pool: &SqlitePool, seed: &NewSeed) -> Result<i64, sqlx:
             light_requirement, frost_tolerance, is_organic, is_heirloom,
             days_to_maturity, sow_depth, plant_spacing, germination_info,
             planting_instructions, growing_instructions, harvest_instructions,
-            raw_html, shopify_product_id, tags_raw, purchase_year, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            raw_html, shopify_product_id, tags_raw
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&seed.product_handle)
     .bind(&seed.source_url)
@@ -92,23 +90,74 @@ pub async fn insert_seed(pool: &SqlitePool, seed: &NewSeed) -> Result<i64, sqlx:
     .bind(&seed.raw_html)
     .bind(seed.shopify_product_id)
     .bind(&seed.tags_raw)
-    .bind(seed.purchase_year)
-    .bind(&seed.notes)
     .execute(pool)
     .await?;
 
     Ok(result.last_insert_rowid())
 }
 
-pub async fn update_seed(
+// --- Seed Purchase CRUD ---
+
+pub async fn list_purchases_for_seed(
+    pool: &SqlitePool,
+    seed_id: i64,
+) -> Result<Vec<SeedPurchase>, sqlx::Error> {
+    sqlx::query_as::<_, SeedPurchase>(
+        "SELECT * FROM seed_purchases WHERE seed_id = ? ORDER BY purchase_year DESC",
+    )
+    .bind(seed_id)
+    .fetch_all(pool)
+    .await
+}
+
+pub async fn get_purchase(
     pool: &SqlitePool,
     id: i64,
-    purchase_year: Option<i64>,
+) -> Result<Option<SeedPurchase>, sqlx::Error> {
+    sqlx::query_as::<_, SeedPurchase>("SELECT * FROM seed_purchases WHERE id = ?")
+        .bind(id)
+        .fetch_optional(pool)
+        .await
+}
+
+pub async fn insert_purchase(
+    pool: &SqlitePool,
+    seed_id: i64,
+    purchase_year: i64,
+    notes: Option<&str>,
+) -> Result<i64, sqlx::Error> {
+    let result = sqlx::query(
+        "INSERT INTO seed_purchases (seed_id, purchase_year, notes) VALUES (?, ?, ?)",
+    )
+    .bind(seed_id)
+    .bind(purchase_year)
+    .bind(notes)
+    .execute(pool)
+    .await?;
+
+    Ok(result.last_insert_rowid())
+}
+
+pub async fn update_purchase(
+    pool: &SqlitePool,
+    id: i64,
+    purchase_year: i64,
     notes: Option<&str>,
 ) -> Result<bool, sqlx::Error> {
-    let result = sqlx::query("UPDATE seeds SET purchase_year = ?, notes = ? WHERE id = ?")
-        .bind(purchase_year)
-        .bind(notes)
+    let result = sqlx::query(
+        "UPDATE seed_purchases SET purchase_year = ?, notes = ? WHERE id = ?",
+    )
+    .bind(purchase_year)
+    .bind(notes)
+    .bind(id)
+    .execute(pool)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn delete_purchase(pool: &SqlitePool, id: i64) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query("DELETE FROM seed_purchases WHERE id = ?")
         .bind(id)
         .execute(pool)
         .await?;
