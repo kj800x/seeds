@@ -1,5 +1,3 @@
-PRAGMA journal_mode=WAL;
-
 CREATE TABLE IF NOT EXISTS seeds (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     product_handle TEXT NOT NULL UNIQUE,
