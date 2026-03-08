@@ -12,7 +12,7 @@ This roadmap delivers a single-user garden seed management and planting schedule
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation + Scraping** - Bootable server with SQLite storage and validated Botanical Interests product scraper
+- [x] **Phase 1: Foundation + Scraping** - Bootable server with SQLite storage and validated Botanical Interests product scraper (completed 2026-03-08)
 - [ ] **Phase 2: Seed Inventory + Viability** - Full inventory CRUD with viability estimation based on species and seed age
 - [ ] **Phase 3: Season Planning + Schedule Views** - Schedule generation from inventory selections with action list and calendar views
 - [ ] **Phase 4: Polish + Differentiators** - Enhanced viability indicators, focused views, and print support
@@ -87,7 +87,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation + Scraping | 2/3 | In Progress|  |
+| 1. Foundation + Scraping | 3/3 | Complete   | 2026-03-08 |
 | 2. Seed Inventory + Viability | 0/? | Not started | - |
 | 3. Season Planning + Schedule Views | 0/? | Not started | - |
 | 4. Polish + Differentiators | 0/? | Not started | - |

@@ -7,7 +7,7 @@
 
 ### Scraping
 
-- [ ] **SCRP-01**: User can add a seed to inventory by pasting a Botanical Interests product URL
+- [x] **SCRP-01**: User can add a seed to inventory by pasting a Botanical Interests product URL
 - [x] **SCRP-02**: App scrapes BI product page and extracts human-readable data (name, variety, description, planting instructions, days to maturity, spacing, depth)
 - [x] **SCRP-03**: App extracts machine-readable/structured data from BI product page (species, category, sun/shade, height, etc.)
 - [x] **SCRP-04**: App downloads and stores product images locally
@@ -82,7 +82,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SCRP-01 | Phase 1 | Pending |
+| SCRP-01 | Phase 1 | Complete |
 | SCRP-02 | Phase 1 | Complete |
 | SCRP-03 | Phase 1 | Complete |
 | SCRP-04 | Phase 1 | Complete |
