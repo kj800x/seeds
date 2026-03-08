@@ -41,7 +41,11 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(routes::home::home))
-        .route("/seeds/{id}", get(routes::seeds::seed_detail))
+        .route("/seeds/{id}", get(routes::seeds::seed_detail)
+                              .put(routes::seeds::update_seed_handler)
+                              .delete(routes::seeds::delete_seed_handler))
+        .route("/seeds/{id}/edit", get(routes::seeds::edit_seed_form))
+        .route("/seeds/{id}/info", get(routes::seeds::seed_info_fragment))
         .route("/seeds/add", post(routes::seeds::add_seed))
         .nest_service("/static", ServeDir::new("static"))
         .nest_service("/images", ServeDir::new("data/images"))

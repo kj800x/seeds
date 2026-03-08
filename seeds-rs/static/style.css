@@ -458,6 +458,117 @@ a:hover {
     margin: 8px 0;
 }
 
+/* Viability Display on Detail Page */
+.viability-display {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--color-earth-green);
+}
+
+.viability-detail {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+/* Edit / Delete Buttons */
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s, opacity 0.15s;
+}
+
+.btn-edit {
+    background-color: var(--color-cream-dark);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    margin-top: 12px;
+}
+
+.btn-edit:hover {
+    background-color: var(--color-border);
+}
+
+.btn-save {
+    background-color: var(--color-earth-green);
+    color: var(--color-white);
+}
+
+.btn-save:hover {
+    background-color: var(--color-earth-green-dark);
+}
+
+.btn-cancel {
+    background-color: var(--color-cream-dark);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+}
+
+.btn-cancel:hover {
+    background-color: var(--color-border);
+}
+
+.btn-delete {
+    background-color: var(--color-error-bg);
+    color: var(--color-error);
+    border: 1px solid var(--color-error);
+}
+
+.btn-delete:hover {
+    background-color: var(--color-error);
+    color: var(--color-white);
+}
+
+.delete-section {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--color-cream-dark);
+    text-align: right;
+}
+
+/* Edit Form */
+.edit-form-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.form-field label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    margin-bottom: 4px;
+}
+
+.form-field input,
+.form-field textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
+    font-family: var(--font-stack);
+    color: var(--color-text);
+    background-color: var(--color-cream);
+}
+
+.form-field input:focus,
+.form-field textarea:focus {
+    outline: none;
+    border-color: var(--color-earth-green-light);
+    box-shadow: 0 0 0 3px rgba(90, 122, 90, 0.15);
+}
+
+.edit-form-actions {
+    display: flex;
+    gap: 8px;
+}
+
 /* Collapsible Original Text */
 .original-text {
     background: var(--color-white);
