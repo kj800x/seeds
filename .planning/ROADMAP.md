@@ -33,8 +33,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01-PLAN.md — Project setup, Axum server, SQLite schema, Maud layout shell, static files
-- [ ] 01-02-PLAN.md — Scraper module (dual JSON/HTML fetch, tag parsing, image download, DB queries)
-- [ ] 01-03-PLAN.md — UI pages (seed list, detail page, add form) and end-to-end verification
+- [x] 01-02-PLAN.md — Scraper module (dual JSON/HTML fetch, tag parsing, image download, DB queries)
+- [x] 01-03-PLAN.md — UI pages (seed list, detail page, add form) and end-to-end verification
 
 ### Phase 2: Seed Inventory + Viability
 **Goal**: Users can manage their seed collection with purchase year tracking and see how viable each seed packet remains
@@ -45,11 +45,11 @@ Plans:
   2. User can click into a seed to see full scraped packet data and product images
   3. User can edit a seed entry (change purchase year, add notes) and delete seeds from inventory
   4. User can specify purchase year when adding a seed, and viability percentage updates based on species and age
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] 02-01-PLAN.md — DB migration (purchase_year, notes), model updates, viability module with species lookup
+- [ ] 02-02-PLAN.md — Inventory CRUD routes, HTMX edit/delete UI, viability display in list and detail views
 
 ### Phase 3: Season Planning + Schedule Views
 **Goal**: Users can select seeds to grow this season and get a complete planting schedule with start-indoors and transplant dates
@@ -88,6 +88,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation + Scraping | 3/3 | Complete   | 2026-03-08 |
-| 2. Seed Inventory + Viability | 0/? | Not started | - |
+| 2. Seed Inventory + Viability | 0/2 | Not started | - |
 | 3. Season Planning + Schedule Views | 0/? | Not started | - |
 | 4. Polish + Differentiators | 0/? | Not started | - |
