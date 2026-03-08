@@ -82,13 +82,39 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated during roadmap creation) | | |
+| SCRP-01 | Phase 1 | Pending |
+| SCRP-02 | Phase 1 | Pending |
+| SCRP-03 | Phase 1 | Pending |
+| SCRP-04 | Phase 1 | Pending |
+| SCRP-05 | Phase 1 | Pending |
+| INFR-01 | Phase 1 | Pending |
+| INFR-02 | Phase 1 | Pending |
+| INFR-03 | Phase 1 | Pending |
+| INVT-01 | Phase 2 | Pending |
+| INVT-02 | Phase 2 | Pending |
+| INVT-03 | Phase 2 | Pending |
+| INVT-04 | Phase 2 | Pending |
+| INVT-05 | Phase 2 | Pending |
+| VIAB-01 | Phase 2 | Pending |
+| VIAB-02 | Phase 2 | Pending |
+| PLAN-01 | Phase 3 | Pending |
+| PLAN-02 | Phase 3 | Pending |
+| PLAN-03 | Phase 3 | Pending |
+| PLAN-04 | Phase 3 | Pending |
+| PLAN-05 | Phase 3 | Pending |
+| VIEW-01 | Phase 3 | Pending |
+| VIEW-02 | Phase 3 | Pending |
+| VIAB-03 | Phase 4 | Pending |
+| VIAB-04 | Phase 4 | Pending |
+| VIAB-05 | Phase 4 | Pending |
+| VIEW-03 | Phase 4 | Pending |
+| VIEW-04 | Phase 4 | Pending |
 
 **Coverage:**
-- v1 requirements: 22 total
-- Mapped to phases: 0
-- Unmapped: 22
+- v1 requirements: 27 total
+- Mapped to phases: 27
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-08*
-*Last updated: 2026-03-08 after initial definition*
+*Last updated: 2026-03-08 after roadmap creation*
