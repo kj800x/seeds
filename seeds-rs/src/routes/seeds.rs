@@ -13,6 +13,7 @@ use crate::templates::seed_detail::seed_detail_page;
 #[derive(Deserialize)]
 pub struct AddSeedInput {
     pub url: String,
+    pub purchase_year: Option<i64>,
 }
 
 pub async fn seed_detail(
@@ -51,6 +52,11 @@ pub async fn add_seed(
 
     match scraper::scrape_and_save(&state, url).await {
         Ok(seed_id) => {
+            // If purchase_year was provided, update the seed record
+            if input.purchase_year.is_some() {
+                let _ = queries::update_seed(&state.db, seed_id, input.purchase_year, None).await;
+            }
+
             // Return HX-Redirect header so HTMX follows the redirect
             (
                 StatusCode::OK,

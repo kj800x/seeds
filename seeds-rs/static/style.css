@@ -295,6 +295,40 @@ a:hover {
     content: " \00b7 ";
 }
 
+/* Viability in Seed List */
+.viability {
+    color: var(--color-earth-green);
+    font-weight: 500;
+}
+
+.viability-prompt {
+    font-style: italic;
+    color: var(--color-warm-brown-light);
+}
+
+/* Purchase Year Input */
+.purchase-year-input {
+    max-width: 200px;
+    padding: 10px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
+    font-family: var(--font-stack);
+    color: var(--color-text);
+    background-color: var(--color-cream);
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.purchase-year-input:focus {
+    outline: none;
+    border-color: var(--color-earth-green-light);
+    box-shadow: 0 0 0 3px rgba(90, 122, 90, 0.15);
+}
+
+.purchase-year-input::placeholder {
+    color: var(--color-text-muted);
+}
+
 /* Empty State */
 .empty-state {
     padding: 48px 24px;
