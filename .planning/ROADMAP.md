@@ -29,11 +29,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Scraped seed data persists across app restarts (stored in SQLite)
   4. Product images from scraped pages are downloaded and served locally
   5. Raw HTML of every scraped page is stored for recovery if the scraper breaks
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md — Project setup, Axum server, SQLite schema, Maud layout shell, static files
+- [ ] 01-02-PLAN.md — Scraper module (dual JSON/HTML fetch, tag parsing, image download, DB queries)
+- [ ] 01-03-PLAN.md — UI pages (seed list, detail page, add form) and end-to-end verification
 
 ### Phase 2: Seed Inventory + Viability
 **Goal**: Users can manage their seed collection with purchase year tracking and see how viable each seed packet remains
@@ -86,7 +87,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation + Scraping | 0/? | Not started | - |
+| 1. Foundation + Scraping | 0/3 | Not started | - |
 | 2. Seed Inventory + Viability | 0/? | Not started | - |
 | 3. Season Planning + Schedule Views | 0/? | Not started | - |
 | 4. Polish + Differentiators | 0/? | Not started | - |
