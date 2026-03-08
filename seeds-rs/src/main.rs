@@ -3,6 +3,7 @@ mod error;
 mod routes;
 mod scraper;
 mod templates;
+mod viability;
 
 use axum::Router;
 use axum::routing::{get, post};
