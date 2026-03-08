@@ -205,13 +205,29 @@ a:hover {
 /* Spinner (hidden by default, shown by HTMX indicator) */
 .spinner {
     display: none;
+    align-items: center;
+    gap: 8px;
     color: var(--color-text-muted);
     font-size: 0.9rem;
-    font-style: italic;
+}
+
+.spinner::before {
+    content: "";
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--color-border);
+    border-top-color: var(--color-earth-green);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
 .htmx-request .spinner {
-    display: inline;
+    display: inline-flex;
 }
 
 .htmx-request button[type="submit"] {
@@ -221,7 +237,12 @@ a:hover {
 
 /* Form Result Messages */
 .form-result {
+    width: 100%;
     margin-top: 12px;
+}
+
+.form-result:empty {
+    display: none;
 }
 
 .error-message {

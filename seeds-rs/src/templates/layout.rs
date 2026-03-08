@@ -10,6 +10,13 @@ pub fn layout(title: &str, content: Markup) -> Markup {
                 title { (title) " | Seeds" }
                 link rel="stylesheet" href="/static/style.css";
                 script src="/static/htmx.min.js" {}
+                script {
+                    "htmx.config.responseHandling = [\
+                        {code:'204', swap: false},\
+                        {code:'[23]..', swap: true},\
+                        {code:'[45]..', swap: true, error: true}\
+                    ];"
+                }
             }
             body {
                 header.app-header {

@@ -22,7 +22,7 @@ pub fn home_page(
                       min="2000" max="2030"
                       class="purchase-year-input";
                 button type="submit" { "Add Seed" }
-                span.spinner { "Adding seed..." }
+                span.spinner { "Importing seed data\u{2026}" }
             }
             div.form-result {}
         }
