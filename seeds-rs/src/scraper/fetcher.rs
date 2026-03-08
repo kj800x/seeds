@@ -88,6 +88,12 @@ pub async fn fetch_product(
         .await
         .map_err(|e| AppError::ScraperError(format!("Failed to fetch JSON API: {}", e)))?;
 
+    if json_resp.status() == reqwest::StatusCode::NOT_FOUND {
+        return Err(AppError::ScraperError(
+            "Product not found — check the URL and try again".into(),
+        ));
+    }
+
     if !json_resp.status().is_success() {
         return Err(AppError::ScraperError(format!(
             "JSON API returned status {}",

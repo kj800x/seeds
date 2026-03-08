@@ -32,14 +32,15 @@ pub async fn add_seed(
     State(state): State<AppState>,
     Form(input): Form<AddSeedInput>,
 ) -> Response {
-    // Validate URL
+    // Validate URL — must be a botanicalinterests.com URL containing /products/
     let url = input.url.trim();
-    let is_valid = url.starts_with("https://www.botanicalinterests.com/products/")
-        || url.starts_with("http://www.botanicalinterests.com/products/")
-        || url.starts_with("https://botanicalinterests.com/products/")
-        || url.starts_with("http://botanicalinterests.com/products/");
+    let host_ok = url.starts_with("https://www.botanicalinterests.com/")
+        || url.starts_with("http://www.botanicalinterests.com/")
+        || url.starts_with("https://botanicalinterests.com/")
+        || url.starts_with("http://botanicalinterests.com/");
+    let has_products = url.contains("/products/");
 
-    if !is_valid {
+    if !host_ok || !has_products {
         let fragment = html! {
             div.error-message {
                 p { "Not a valid Botanical Interests product URL" }
@@ -69,10 +70,14 @@ pub async fn add_seed(
             };
             (StatusCode::CONFLICT, fragment).into_response()
         }
-        Err(_) => {
+        Err(e) => {
+            let msg = match &e {
+                AppError::ScraperError(s) => s.clone(),
+                _ => "Could not extract seed data \u{2014} please try again".to_string(),
+            };
             let fragment = html! {
                 div.error-message {
-                    p { "Could not extract seed data \u{2014} please try again" }
+                    p { (msg) }
                 }
             };
             (StatusCode::INTERNAL_SERVER_ERROR, fragment).into_response()
