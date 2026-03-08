@@ -46,9 +46,9 @@
 
 ### Infrastructure
 
-- [ ] **INFR-01**: All seed data stored locally in SQLite database
-- [ ] **INFR-02**: App served as single Rust binary (Axum + Maud + HTMX)
-- [ ] **INFR-03**: App works offline after initial seed scraping
+- [x] **INFR-01**: All seed data stored locally in SQLite database
+- [x] **INFR-02**: App served as single Rust binary (Axum + Maud + HTMX)
+- [x] **INFR-03**: App works offline after initial seed scraping
 
 ## v2 Requirements
 
@@ -87,9 +87,9 @@
 | SCRP-03 | Phase 1 | Pending |
 | SCRP-04 | Phase 1 | Pending |
 | SCRP-05 | Phase 1 | Pending |
-| INFR-01 | Phase 1 | Pending |
-| INFR-02 | Phase 1 | Pending |
-| INFR-03 | Phase 1 | Pending |
+| INFR-01 | Phase 1 | Complete |
+| INFR-02 | Phase 1 | Complete |
+| INFR-03 | Phase 1 | Complete |
 | INVT-01 | Phase 2 | Pending |
 | INVT-02 | Phase 2 | Pending |
 | INVT-03 | Phase 2 | Pending |

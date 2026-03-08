@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Project setup, Axum server, SQLite schema, Maud layout shell, static files
+- [x] 01-01-PLAN.md — Project setup, Axum server, SQLite schema, Maud layout shell, static files
 - [ ] 01-02-PLAN.md — Scraper module (dual JSON/HTML fetch, tag parsing, image download, DB queries)
 - [ ] 01-03-PLAN.md — UI pages (seed list, detail page, add form) and end-to-end verification
 
@@ -87,7 +87,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation + Scraping | 0/3 | Not started | - |
+| 1. Foundation + Scraping | 1/3 | In progress | - |
 | 2. Seed Inventory + Viability | 0/? | Not started | - |
 | 3. Season Planning + Schedule Views | 0/? | Not started | - |
 | 4. Polish + Differentiators | 0/? | Not started | - |
