@@ -8,7 +8,7 @@ use crate::db::models::AppState;
 use crate::db::queries;
 use crate::error::AppError;
 use crate::scraper;
-use crate::templates::seed_detail::{seed_detail_page, seed_info_section};
+use crate::templates::seed_detail::{seed_detail_page, seed_purchases_section};
 
 #[derive(Deserialize)]
 pub struct AddSeedInput {
@@ -25,8 +25,9 @@ pub async fn seed_detail(
         .ok_or_else(|| AppError::NotFound(format!("Seed {} not found", id)))?;
 
     let images = queries::get_seed_images(&state.db, id).await?;
+    let purchases = queries::list_purchases_for_seed(&state.db, id).await?;
 
-    Ok(seed_detail_page(&seed, &images))
+    Ok(seed_detail_page(&seed, &images, &purchases))
 }
 
 pub async fn add_seed(
@@ -52,9 +53,9 @@ pub async fn add_seed(
 
     match scraper::scrape_and_save(&state, url).await {
         Ok(seed_id) => {
-            // If purchase_year was provided, update the seed record
-            if input.purchase_year.is_some() {
-                let _ = queries::update_seed(&state.db, seed_id, input.purchase_year, None).await;
+            // If purchase_year was provided, create a purchase record
+            if let Some(year) = input.purchase_year {
+                let _ = queries::insert_purchase(&state.db, seed_id, year, None).await;
             }
 
             // Return HX-Redirect header so HTMX follows the redirect
@@ -91,78 +92,123 @@ pub async fn add_seed(
     }
 }
 
+// --- Purchase CRUD handlers ---
+
 #[derive(Deserialize)]
-pub struct UpdateSeedInput {
-    pub purchase_year: Option<i64>,
+pub struct AddPurchaseInput {
+    pub purchase_year: i64,
     pub notes: Option<String>,
 }
 
-/// GET /seeds/{id}/edit - Returns inline edit form fragment
-pub async fn edit_seed_form(
+/// POST /seeds/{id}/purchases - Add a new purchase record
+pub async fn add_purchase_handler(
     State(state): State<AppState>,
-    Path(id): Path<i64>,
+    Path(seed_id): Path<i64>,
+    Form(input): Form<AddPurchaseInput>,
 ) -> Result<Markup, AppError> {
-    let seed = queries::get_seed(&state.db, id)
+    let seed = queries::get_seed(&state.db, seed_id)
         .await?
-        .ok_or_else(|| AppError::NotFound(format!("Seed {} not found", id)))?;
+        .ok_or_else(|| AppError::NotFound(format!("Seed {} not found", seed_id)))?;
+
+    queries::insert_purchase(&state.db, seed_id, input.purchase_year, input.notes.as_deref())
+        .await?;
+
+    let purchases = queries::list_purchases_for_seed(&state.db, seed_id).await?;
+    Ok(seed_purchases_section(&seed, &purchases))
+}
+
+#[derive(Deserialize)]
+pub struct UpdatePurchaseInput {
+    pub purchase_year: i64,
+    pub notes: Option<String>,
+}
+
+/// PUT /seeds/{seed_id}/purchases/{purchase_id} - Update a purchase record
+pub async fn update_purchase_handler(
+    State(state): State<AppState>,
+    Path((seed_id, purchase_id)): Path<(i64, i64)>,
+    Form(input): Form<UpdatePurchaseInput>,
+) -> Result<Markup, AppError> {
+    let seed = queries::get_seed(&state.db, seed_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Seed {} not found", seed_id)))?;
+
+    queries::update_purchase(&state.db, purchase_id, input.purchase_year, input.notes.as_deref())
+        .await?;
+
+    let purchases = queries::list_purchases_for_seed(&state.db, seed_id).await?;
+    Ok(seed_purchases_section(&seed, &purchases))
+}
+
+/// DELETE /seeds/{seed_id}/purchases/{purchase_id} - Delete a purchase record
+pub async fn delete_purchase_handler(
+    State(state): State<AppState>,
+    Path((seed_id, purchase_id)): Path<(i64, i64)>,
+) -> Result<Markup, AppError> {
+    let seed = queries::get_seed(&state.db, seed_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Seed {} not found", seed_id)))?;
+
+    queries::delete_purchase(&state.db, purchase_id).await?;
+
+    let purchases = queries::list_purchases_for_seed(&state.db, seed_id).await?;
+    Ok(seed_purchases_section(&seed, &purchases))
+}
+
+/// GET /seeds/{seed_id}/purchases/{purchase_id}/edit - Return edit form for a purchase
+pub async fn edit_purchase_form(
+    State(state): State<AppState>,
+    Path((seed_id, purchase_id)): Path<(i64, i64)>,
+) -> Result<Markup, AppError> {
+    let _seed = queries::get_seed(&state.db, seed_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Seed {} not found", seed_id)))?;
+
+    let purchase = queries::get_purchase(&state.db, purchase_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Purchase {} not found", purchase_id)))?;
 
     Ok(html! {
-        form #seed-info hx-put=(format!("/seeds/{}", seed.id)) hx-target="this" hx-swap="outerHTML" {
-            section.detail-section {
-                h2 { "Edit Inventory Info" }
-                div.edit-form-fields {
-                    div.form-field {
-                        label for="purchase_year" { "Purchase Year" }
-                        input type="number" name="purchase_year" id="purchase_year"
-                              value=[seed.purchase_year.map(|y| y.to_string())]
-                              placeholder="e.g. 2025" min="2000" max="2030";
-                    }
-                    div.form-field {
-                        label for="notes" { "Notes" }
-                        textarea name="notes" id="notes" rows="3"
-                                 placeholder="Add notes about this seed..." {
-                            @if let Some(ref notes) = seed.notes {
-                                (notes)
-                            }
+        tr.purchase-edit-row {
+            td colspan="4" {
+                form hx-put=(format!("/seeds/{}/purchases/{}", seed_id, purchase_id))
+                     hx-target="#seed-purchases" hx-swap="outerHTML" {
+                    div.edit-form-fields.edit-form-inline {
+                        div.form-field {
+                            label for="purchase_year" { "Year" }
+                            input type="number" name="purchase_year" value=(purchase.purchase_year)
+                                  min="2000" max="2030" required;
+                        }
+                        div.form-field {
+                            label for="notes" { "Notes" }
+                            input type="text" name="notes"
+                                  value=[purchase.notes.as_deref()]
+                                  placeholder="Optional notes...";
+                        }
+                        div.edit-form-actions {
+                            button type="submit" class="btn btn-save btn-sm" { "Save" }
+                            button type="button" class="btn btn-cancel btn-sm"
+                                   hx-get=(format!("/seeds/{}/purchases", seed_id))
+                                   hx-target="#seed-purchases" hx-swap="outerHTML" { "Cancel" }
                         }
                     }
-                }
-                div.edit-form-actions {
-                    button type="submit" class="btn btn-save" { "Save" }
-                    button type="button" class="btn btn-cancel"
-                           hx-get=(format!("/seeds/{}/info", seed.id))
-                           hx-target="#seed-info" hx-swap="outerHTML" { "Cancel" }
                 }
             }
         }
     })
 }
 
-/// GET /seeds/{id}/info - Returns display-mode seed info fragment
-pub async fn seed_info_fragment(
+/// GET /seeds/{id}/purchases - Return the purchases section fragment
+pub async fn purchases_fragment(
     State(state): State<AppState>,
-    Path(id): Path<i64>,
+    Path(seed_id): Path<i64>,
 ) -> Result<Markup, AppError> {
-    let seed = queries::get_seed(&state.db, id)
+    let seed = queries::get_seed(&state.db, seed_id)
         .await?
-        .ok_or_else(|| AppError::NotFound(format!("Seed {} not found", id)))?;
+        .ok_or_else(|| AppError::NotFound(format!("Seed {} not found", seed_id)))?;
 
-    Ok(seed_info_section(&seed))
-}
-
-/// PUT /seeds/{id} - Update seed and return display-mode fragment
-pub async fn update_seed_handler(
-    State(state): State<AppState>,
-    Path(id): Path<i64>,
-    Form(input): Form<UpdateSeedInput>,
-) -> Result<Markup, AppError> {
-    queries::update_seed(&state.db, id, input.purchase_year, input.notes.as_deref()).await?;
-
-    let seed = queries::get_seed(&state.db, id)
-        .await?
-        .ok_or_else(|| AppError::NotFound(format!("Seed {} not found", id)))?;
-
-    Ok(seed_info_section(&seed))
+    let purchases = queries::list_purchases_for_seed(&state.db, seed_id).await?;
+    Ok(seed_purchases_section(&seed, &purchases))
 }
 
 /// DELETE /seeds/{id} - Delete seed and redirect to list

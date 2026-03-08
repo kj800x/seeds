@@ -6,7 +6,7 @@ mod templates;
 mod viability;
 
 use axum::Router;
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use sqlx::SqlitePool;
 use tower_http::services::ServeDir;
 
@@ -42,10 +42,12 @@ async fn main() {
     let app = Router::new()
         .route("/", get(routes::home::home))
         .route("/seeds/{id}", get(routes::seeds::seed_detail)
-                              .put(routes::seeds::update_seed_handler)
                               .delete(routes::seeds::delete_seed_handler))
-        .route("/seeds/{id}/edit", get(routes::seeds::edit_seed_form))
-        .route("/seeds/{id}/info", get(routes::seeds::seed_info_fragment))
+        .route("/seeds/{id}/purchases", get(routes::seeds::purchases_fragment)
+                                        .post(routes::seeds::add_purchase_handler))
+        .route("/seeds/{id}/purchases/{purchase_id}", delete(routes::seeds::delete_purchase_handler)
+                                                      .put(routes::seeds::update_purchase_handler))
+        .route("/seeds/{id}/purchases/{purchase_id}/edit", get(routes::seeds::edit_purchase_form))
         .route("/seeds/add", post(routes::seeds::add_seed))
         .nest_service("/static", ServeDir::new("static"))
         .nest_service("/images", ServeDir::new("data/images"))

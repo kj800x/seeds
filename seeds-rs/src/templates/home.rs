@@ -1,10 +1,15 @@
 use maud::{html, Markup};
+use std::collections::HashMap;
 
 use crate::db::models::Seed;
 use crate::viability::estimate_viability;
 use super::layout::layout;
 
-pub fn home_page(seeds: &[Seed]) -> Markup {
+pub fn home_page(
+    seeds: &[Seed],
+    newest_purchases: &HashMap<i64, i64>,
+    purchase_counts: &HashMap<i64, i64>,
+) -> Markup {
     let content = html! {
         section.add-seed {
             h2 { "Add a Seed" }
@@ -32,6 +37,8 @@ pub fn home_page(seeds: &[Seed]) -> Markup {
             } @else {
                 ul.seed-list {
                     @for seed in seeds {
+                        @let newest_year = newest_purchases.get(&seed.id).copied();
+                        @let count = purchase_counts.get(&seed.id).copied().unwrap_or(0);
                         li {
                             a.seed-row href=(format!("/seeds/{}", seed.id)) {
                                 div.seed-row-title { (seed.title) }
@@ -45,18 +52,24 @@ pub fn home_page(seeds: &[Seed]) -> Markup {
                                     @if let Some(ref dtm) = seed.days_to_maturity {
                                         span { (dtm) " days" }
                                     }
-                                    @if let Some(py) = seed.purchase_year {
-                                        span { "Purchased " (py) }
+                                    @if let Some(year) = newest_year {
+                                        span {
+                                            @if count > 1 {
+                                                (count) " lots (newest " (year) ")"
+                                            } @else {
+                                                "Purchased " (year)
+                                            }
+                                        }
                                     }
                                     @let viability = estimate_viability(
                                         seed.subcategory.as_deref(),
                                         seed.category.as_deref(),
-                                        seed.purchase_year,
+                                        newest_year,
                                     );
                                     @if let Some(ref est) = viability {
                                         span.viability { (est.percentage) "% viable" }
-                                    } @else if seed.purchase_year.is_none() {
-                                        span.viability-prompt { "Set year for viability" }
+                                    } @else if newest_year.is_none() {
+                                        span.viability-prompt { "Add purchase to see viability" }
                                     }
                                 }
                             }

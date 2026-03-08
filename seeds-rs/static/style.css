@@ -569,6 +569,96 @@ a:hover {
     gap: 8px;
 }
 
+/* Purchases Table */
+.purchases-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+    font-size: 0.95rem;
+}
+
+.purchases-table th {
+    text-align: left;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.purchases-table td {
+    padding: 8px 8px;
+    border-bottom: 1px solid var(--color-cream-dark);
+    vertical-align: middle;
+}
+
+.purchase-actions {
+    white-space: nowrap;
+    text-align: right;
+}
+
+.purchase-actions .btn {
+    margin-left: 4px;
+}
+
+.btn-sm {
+    padding: 4px 10px;
+    font-size: 0.8rem;
+}
+
+/* Add Purchase Form */
+.add-purchase-form {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-cream-dark);
+}
+
+.add-purchase-fields {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.purchase-notes-input {
+    flex: 1;
+    min-width: 150px;
+    padding: 6px 10px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    font-family: var(--font-stack);
+    color: var(--color-text);
+    background-color: var(--color-cream);
+}
+
+.purchase-notes-input:focus {
+    outline: none;
+    border-color: var(--color-earth-green-light);
+    box-shadow: 0 0 0 3px rgba(90, 122, 90, 0.15);
+}
+
+/* Inline Edit Form for Purchases */
+.edit-form-inline {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.edit-form-inline .form-field {
+    flex: 0 0 auto;
+}
+
+.edit-form-inline .form-field:nth-child(2) {
+    flex: 1;
+}
+
+.purchase-edit-row td {
+    padding: 12px 8px;
+    background-color: var(--color-cream);
+}
+
 /* Collapsible Original Text */
 .original-text {
     background: var(--color-white);

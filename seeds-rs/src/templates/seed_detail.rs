@@ -1,61 +1,90 @@
 use maud::{html, Markup, PreEscaped};
 
-use crate::db::models::{Seed, SeedImage};
+use crate::db::models::{Seed, SeedImage, SeedPurchase};
 use crate::viability::estimate_viability;
 use super::layout::layout;
 
-/// Render the seed info section (inventory info + viability).
+/// Render the seed purchases section with viability per purchase.
 /// Used by both the full page template and the HTMX fragment handlers.
-pub fn seed_info_section(seed: &Seed) -> Markup {
-    let viability = estimate_viability(
-        seed.subcategory.as_deref(),
-        seed.category.as_deref(),
-        seed.purchase_year,
-    );
-
+pub fn seed_purchases_section(seed: &Seed, purchases: &[SeedPurchase]) -> Markup {
     html! {
-        div #seed-info {
+        div #seed-purchases {
             section.detail-section {
-                h2 { "Inventory Info" }
-                dl.info-list {
-                    dt { "Purchase Year" }
-                    dd {
-                        @if let Some(py) = seed.purchase_year {
-                            (py)
-                        } @else {
-                            span.viability-prompt { "Not set" }
-                        }
-                    }
-                    @if let Some(ref notes) = seed.notes {
-                        dt { "Notes" }
-                        dd { (notes) }
-                    }
-                    dt { "Viability" }
-                    dd {
-                        @if let Some(ref est) = viability {
-                            span.viability-display { (est.percentage) "%" }
-                            " "
-                            span.viability-detail {
-                                "(" (est.age_years) " of " (est.max_years)
-                                " year lifespan, matched on " (est.species_key) ")"
+                h2 { "Purchase History & Viability" }
+
+                @if purchases.is_empty() {
+                    p.viability-prompt { "No purchases recorded. Add one below to track viability." }
+                } @else {
+                    table.purchases-table {
+                        thead {
+                            tr {
+                                th { "Year" }
+                                th { "Viability" }
+                                th { "Notes" }
+                                th { "" }
                             }
-                        } @else if seed.purchase_year.is_none() {
-                            span.viability-prompt { "Set purchase year to see viability estimate" }
-                        } @else {
-                            span.viability-prompt { "Viability unavailable (no species data)" }
+                        }
+                        tbody {
+                            @for purchase in purchases {
+                                @let viability = estimate_viability(
+                                    seed.subcategory.as_deref(),
+                                    seed.category.as_deref(),
+                                    Some(purchase.purchase_year),
+                                );
+                                tr {
+                                    td { (purchase.purchase_year) }
+                                    td {
+                                        @if let Some(ref est) = viability {
+                                            span.viability-display { (est.percentage) "%" }
+                                            " "
+                                            span.viability-detail {
+                                                "(" (est.age_years) "/" (est.max_years) " yr)"
+                                            }
+                                        } @else {
+                                            span.viability-prompt { "N/A" }
+                                        }
+                                    }
+                                    td {
+                                        @if let Some(ref notes) = purchase.notes {
+                                            (notes)
+                                        }
+                                    }
+                                    td.purchase-actions {
+                                        button.btn.btn-edit.btn-sm
+                                               hx-get=(format!("/seeds/{}/purchases/{}/edit", seed.id, purchase.id))
+                                               hx-target="closest tr"
+                                               hx-swap="outerHTML" { "Edit" }
+                                        button.btn.btn-delete.btn-sm
+                                               hx-delete=(format!("/seeds/{}/purchases/{}", seed.id, purchase.id))
+                                               hx-target="#seed-purchases"
+                                               hx-swap="outerHTML"
+                                               hx-confirm="Delete this purchase record?" { "Delete" }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
-                button.btn.btn-edit
-                       hx-get=(format!("/seeds/{}/edit", seed.id))
-                       hx-target="#seed-info"
-                       hx-swap="outerHTML" { "Edit" }
+
+                // Add purchase form
+                form.add-purchase-form
+                     hx-post=(format!("/seeds/{}/purchases", seed.id))
+                     hx-target="#seed-purchases"
+                     hx-swap="outerHTML" {
+                    div.add-purchase-fields {
+                        input type="number" name="purchase_year" placeholder="Year (e.g. 2025)"
+                              min="2000" max="2030" required class="purchase-year-input";
+                        input type="text" name="notes" placeholder="Notes (optional)"
+                              class="purchase-notes-input";
+                        button type="submit" class="btn btn-save btn-sm" { "Add Purchase" }
+                    }
+                }
             }
         }
     }
 }
 
-pub fn seed_detail_page(seed: &Seed, images: &[SeedImage]) -> Markup {
+pub fn seed_detail_page(seed: &Seed, images: &[SeedImage], purchases: &[SeedPurchase]) -> Markup {
     let hero_image = images.iter().find(|img| img.position == 1);
 
     let content = html! {
@@ -80,8 +109,8 @@ pub fn seed_detail_page(seed: &Seed, images: &[SeedImage]) -> Markup {
                 }
             }
 
-            // Inventory Info section (with viability)
-            (seed_info_section(seed))
+            // Purchase history & viability section
+            (seed_purchases_section(seed, purchases))
 
             // Growing Info section
             @if seed.days_to_maturity.is_some() || seed.light_requirement.is_some() || seed.frost_tolerance.is_some() {
