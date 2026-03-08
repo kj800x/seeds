@@ -5,7 +5,7 @@ mod scraper;
 mod templates;
 
 use axum::Router;
-use axum::routing::get;
+use axum::routing::{get, post};
 use sqlx::SqlitePool;
 use tower_http::services::ServeDir;
 
@@ -40,7 +40,8 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(routes::home::home))
-        // Seed detail and add routes will be added in Plan 03
+        .route("/seeds/{id}", get(routes::seeds::seed_detail))
+        .route("/seeds/add", post(routes::seeds::add_seed))
         .nest_service("/static", ServeDir::new("static"))
         .nest_service("/images", ServeDir::new("data/images"))
         .with_state(state);
