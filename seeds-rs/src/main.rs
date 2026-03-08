@@ -1,6 +1,7 @@
 mod db;
 mod error;
 mod routes;
+mod scraper;
 mod templates;
 
 use axum::Router;

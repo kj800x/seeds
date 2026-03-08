@@ -7,6 +7,7 @@ pub enum AppError {
     DbError(sqlx::Error),
     ScraperError(String),
     NotFound(String),
+    DuplicateSeed { existing_id: i64 },
 }
 
 impl fmt::Display for AppError {
@@ -15,6 +16,9 @@ impl fmt::Display for AppError {
             AppError::DbError(e) => write!(f, "Database error: {}", e),
             AppError::ScraperError(msg) => write!(f, "Scraper error: {}", msg),
             AppError::NotFound(msg) => write!(f, "Not found: {}", msg),
+            AppError::DuplicateSeed { existing_id } => {
+                write!(f, "This seed is already in your collection (id: {})", existing_id)
+            }
         }
     }
 }
@@ -34,6 +38,10 @@ impl IntoResponse for AppError {
             ),
             AppError::ScraperError(msg) => (StatusCode::BAD_REQUEST, msg.as_str()),
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.as_str()),
+            AppError::DuplicateSeed { .. } => (
+                StatusCode::CONFLICT,
+                "This seed is already in your collection.",
+            ),
         };
 
         let body = format!(
