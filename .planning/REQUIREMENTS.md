@@ -17,14 +17,14 @@
 
 - [ ] **INVT-01**: User can view all seeds in their inventory with key details (name, variety, year, viability indicator)
 - [ ] **INVT-02**: User can view detailed seed info page showing all scraped packet data and images
-- [ ] **INVT-03**: User can specify purchase year when adding a seed
-- [ ] **INVT-04**: User can edit seed inventory entries (year, notes)
-- [ ] **INVT-05**: User can delete seeds from inventory
+- [x] **INVT-03**: User can specify purchase year when adding a seed
+- [x] **INVT-04**: User can edit seed inventory entries (year, notes)
+- [x] **INVT-05**: User can delete seeds from inventory
 
 ### Viability
 
-- [ ] **VIAB-01**: App displays estimated germination viability percentage based on species and seed age
-- [ ] **VIAB-02**: Viability estimation uses a species-based lookup table of viability curves
+- [x] **VIAB-01**: App displays estimated germination viability percentage based on species and seed age
+- [x] **VIAB-02**: Viability estimation uses a species-based lookup table of viability curves
 - [ ] **VIAB-03**: Inventory list shows color-coded viability indicators (green/yellow/orange/red) at a glance
 - [ ] **VIAB-04**: App warns user about seeds nearing end of useful life ("use or lose" alerts)
 - [ ] **VIAB-05**: App suggests over-sowing quantity for seeds with reduced germination rates
@@ -92,11 +92,11 @@
 | INFR-03 | Phase 1 | Complete |
 | INVT-01 | Phase 2 | Pending |
 | INVT-02 | Phase 2 | Pending |
-| INVT-03 | Phase 2 | Pending |
-| INVT-04 | Phase 2 | Pending |
-| INVT-05 | Phase 2 | Pending |
-| VIAB-01 | Phase 2 | Pending |
-| VIAB-02 | Phase 2 | Pending |
+| INVT-03 | Phase 2 | Complete |
+| INVT-04 | Phase 2 | Complete |
+| INVT-05 | Phase 2 | Complete |
+| VIAB-01 | Phase 2 | Complete |
+| VIAB-02 | Phase 2 | Complete |
 | PLAN-01 | Phase 3 | Pending |
 | PLAN-02 | Phase 3 | Pending |
 | PLAN-03 | Phase 3 | Pending |

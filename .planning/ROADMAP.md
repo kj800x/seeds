@@ -48,7 +48,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — DB migration (purchase_year, notes), model updates, viability module with species lookup
+- [x] 02-01-PLAN.md — DB migration (purchase_year, notes), model updates, viability module with species lookup
 - [ ] 02-02-PLAN.md — Inventory CRUD routes, HTMX edit/delete UI, viability display in list and detail views
 
 ### Phase 3: Season Planning + Schedule Views
@@ -88,6 +88,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation + Scraping | 3/3 | Complete   | 2026-03-08 |
-| 2. Seed Inventory + Viability | 0/2 | Not started | - |
+| 2. Seed Inventory + Viability | 1/2 | In progress | - |
 | 3. Season Planning + Schedule Views | 0/? | Not started | - |
 | 4. Polish + Differentiators | 0/? | Not started | - |
