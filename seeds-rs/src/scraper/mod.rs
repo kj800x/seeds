@@ -74,6 +74,8 @@ pub async fn scrape_and_save(state: &AppState, url: &str) -> Result<i64, AppErro
         raw_html: Some(raw_html),
         shopify_product_id: Some(product.id),
         tags_raw: Some(product.tags),
+        purchase_year: None,
+        notes: None,
     };
 
     let seed_id = queries::insert_seed(&state.db, &new_seed).await?;

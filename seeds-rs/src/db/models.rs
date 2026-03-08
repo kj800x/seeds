@@ -24,6 +24,8 @@ pub struct Seed {
     pub raw_html: Option<String>,
     pub shopify_product_id: Option<i64>,
     pub tags_raw: Option<String>,
+    pub purchase_year: Option<i64>,
+    pub notes: Option<String>,
     pub created_at: Option<String>,
 }
 

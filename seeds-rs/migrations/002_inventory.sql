@@ -1,0 +1,2 @@
+ALTER TABLE seeds ADD COLUMN purchase_year INTEGER;
+ALTER TABLE seeds ADD COLUMN notes TEXT;
