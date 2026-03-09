@@ -358,9 +358,18 @@ a:hover {
     background: var(--color-earth-green-dark);
 }
 
+/* Viability Color Tiers */
+.viability-green  { color: #3d8b3d; }
+.viability-yellow { color: #b8a020; }
+.viability-orange { color: #c27853; }
+.viability-red    { color: #c25353; font-weight: 600; }
+
+/* Viability Warning & Sow Suggestion */
+.viability-warning { background: #fff3cd; border: 1px solid #e0c36a; border-radius: 6px; padding: 0.75rem 1rem; margin: 0.75rem 0; color: #856404; }
+.sow-suggestion { background: #e8f4f8; border: 1px solid #b8d4e3; border-radius: 6px; padding: 0.75rem 1rem; margin: 0.75rem 0; color: #2c5f7c; }
+
 /* Viability in Seed List */
 .viability {
-    color: var(--color-earth-green);
     font-weight: 500;
 }
 

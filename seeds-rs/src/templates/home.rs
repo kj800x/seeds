@@ -84,7 +84,7 @@ pub fn home_page(
                                         newest_year,
                                     );
                                     @if let Some(ref est) = viability {
-                                        span.viability { (est.percentage) "% viable" }
+                                        span class=(format!("viability {}", est.color_tier())) { (est.percentage) "% viable" }
                                     } @else if newest_year.is_none() {
                                         span.viability-prompt { "Add purchase to see viability" }
                                     }

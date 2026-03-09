@@ -60,6 +60,43 @@ pub fn estimate_viability(
     })
 }
 
+impl ViabilityEstimate {
+    /// Returns the CSS class for the viability color tier.
+    pub fn color_tier(&self) -> &'static str {
+        match self.percentage {
+            75..=100 => "viability-green",
+            50..=74 => "viability-yellow",
+            25..=49 => "viability-orange",
+            0..=24 => "viability-red",
+            _ => "viability-red",
+        }
+    }
+
+    /// Returns a warning message for seeds at 0% viability or in their last year.
+    pub fn warning_message(&self) -> Option<String> {
+        if self.percentage == 0 {
+            Some(format!(
+                "These seeds have exceeded their expected viability of {} years. Consider replacing them.",
+                self.max_years
+            ))
+        } else if self.age_years + 1 >= self.max_years {
+            Some("Last year of expected viability. Use this season or plan to replace.".to_string())
+        } else {
+            None
+        }
+    }
+
+    /// Returns the sow multiplier for reduced viability seeds.
+    /// None if viability is >= 90% (no compensation needed) or 0% (seeds are dead).
+    pub fn sow_multiplier(&self) -> Option<f32> {
+        if self.percentage >= 90 || self.percentage == 0 {
+            None
+        } else {
+            Some(100.0 / self.percentage as f32)
+        }
+    }
+}
+
 /// Internal helper for testing with a specific current year.
 fn estimate_viability_with_year(
     subcategory: Option<&str>,

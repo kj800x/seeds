@@ -35,7 +35,7 @@ pub fn seed_purchases_section(seed: &Seed, purchases: &[SeedPurchase]) -> Markup
                                     td { (purchase.purchase_year) }
                                     td {
                                         @if let Some(ref est) = viability {
-                                            span.viability-display { (est.percentage) "%" }
+                                            span class=(format!("viability-display {}", est.color_tier())) { (est.percentage) "%" }
                                             " "
                                             span.viability-detail {
                                                 "(" (est.age_years) "/" (est.max_years) " yr)"
@@ -111,6 +111,26 @@ pub fn seed_detail_page(seed: &Seed, images: &[SeedImage], purchases: &[SeedPurc
 
             // Purchase history & viability section
             (seed_purchases_section(seed, purchases))
+
+            // Viability warnings and sow multiplier
+            @if !purchases.is_empty() {
+                @let newest_purchase_year = purchases.iter().map(|p| p.purchase_year).max();
+                @let newest_viability = estimate_viability(
+                    seed.subcategory.as_deref(),
+                    seed.category.as_deref(),
+                    newest_purchase_year,
+                );
+                @if let Some(ref est) = newest_viability {
+                    @if let Some(warning) = est.warning_message() {
+                        div.viability-warning { (warning) }
+                    }
+                    @if let Some(mult) = est.sow_multiplier() {
+                        div.sow-suggestion {
+                            "Sow " (format!("{:.1}", mult)) "x the normal amount to compensate for reduced germination (" (est.percentage) "% viability)."
+                        }
+                    }
+                }
+            }
 
             // Growing Info section
             @if seed.days_to_maturity.is_some() || seed.light_requirement.is_some() || seed.frost_tolerance.is_some() {
