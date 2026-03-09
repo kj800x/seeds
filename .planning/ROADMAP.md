@@ -60,11 +60,11 @@ Plans:
   2. App generates start-indoors and transplant-outdoors dates derived from scraped packet data and Halifax MA frost dates
   3. Schedule correctly handles both cool-season crops (plant before last frost) and warm-season crops (plant after last frost)
   4. User can view the schedule as a sorted action list with dates and as a visual calendar/timeline of the full season
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md — Schedule engine (planting text parser, date calculator, season_plans DB table, plan toggle UI)
+- [ ] 03-02-PLAN.md — Schedule views (sorted action list, CSS Grid timeline, nav update, schedule page styling)
 
 ### Phase 4: Polish + Differentiators
 **Goal**: Enhanced viability feedback, focused schedule views, and print support that round out the user experience
@@ -89,5 +89,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 |-------|----------------|--------|-----------|
 | 1. Foundation + Scraping | 3/3 | Complete   | 2026-03-08 |
 | 2. Seed Inventory + Viability | 2/2 | Complete | 2026-03-08 |
-| 3. Season Planning + Schedule Views | 0/? | Not started | - |
+| 3. Season Planning + Schedule Views | 0/2 | Not started | - |
 | 4. Polish + Differentiators | 0/? | Not started | - |
