@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-03-08T23:56:56.818Z"
-last_activity: 2026-03-08 -- Completed plan 02-02 (inventory UI + multi-lot purchases)
+status: in-progress
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-03-09T01:22:17.000Z"
+last_activity: 2026-03-09 -- Completed plan 03-01 (schedule engine + toggle UI)
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
-  percent: 50
+  total_plans: 7
+  completed_plans: 6
+  percent: 64
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-08)
 
 **Core value:** Take the complicated scheduling math out of starting seeds indoors -- tell the app what you want to grow, and it tells you when to plant, transplant, and expect harvest.
-**Current focus:** Phase 2: Seed Inventory + Viability
+**Current focus:** Phase 3: Season Planning + Schedule Views
 
 ## Current Position
 
-Phase: 2 of 4 (Seed Inventory + Viability) -- COMPLETE
-Plan: 2 of 2 in current phase
-Status: Phase 02 complete, ready for Phase 03
-Last activity: 2026-03-08 -- Completed plan 02-02 (inventory UI + multi-lot purchases)
+Phase: 3 of 4 (Season Planning + Schedule Views)
+Plan: 1 of 2 in current phase
+Status: Plan 03-01 complete, continuing to 03-02
+Last activity: 2026-03-09 -- Completed plan 03-01 (schedule engine + toggle UI)
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 64%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 5min
-- Total execution time: 0.43 hours
+- Total plans completed: 6
+- Average duration: 6min
+- Total execution time: 0.58 hours
 
 **By Phase:**
 
@@ -45,9 +45,10 @@ Progress: [█████░░░░░] 50%
 |-------|-------|-------|----------|
 | 01-foundation-scraping | 3/3 | 21min | 7min |
 | 02-seed-inventory-viability | 2/2 | 6min | 3min |
+| 03-season-planning-schedule-views | 1/2 | 9min | 9min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (3min), 01-03 (12min), 02-01 (3min), 02-02 (3min)
+- Last 5 plans: 01-03 (12min), 02-01 (3min), 02-02 (3min), 03-01 (9min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -73,6 +74,9 @@ Recent decisions affecting current work:
 - [02-02]: Separate seed_purchases table instead of purchase_year column on seeds -- supports multiple lots per seed with independent viability tracking
 - [02-02]: Migration 003 auto-migrates existing purchase_year data to seed_purchases
 - [02-02]: Seed list shows newest purchase viability; detail page shows all lots individually
+- [03-01]: Planting parser uses string search (not regex crate) since BI patterns are predictable
+- [03-01]: Two-phase warm-season pattern stores raw weeks values; calculator combines transplant-relative and frost-relative offsets
+- [03-01]: Toggle button placed outside <a> tag in seed list with stopPropagation to prevent navigation
 
 ### Pending Todos
 
@@ -85,6 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-08T23:51:30Z
-Stopped at: Completed 02-02-PLAN.md
-Resume file: .planning/phases/02-seed-inventory-viability/02-02-SUMMARY.md
+Last session: 2026-03-09T01:22:17Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: .planning/phases/03-season-planning-schedule-views/03-01-SUMMARY.md

@@ -31,11 +31,11 @@
 
 ### Season Planning
 
-- [ ] **PLAN-01**: User can select which seeds from inventory to grow this season
-- [ ] **PLAN-02**: App generates planting schedule with start-indoors dates based on Halifax MA last frost (~May 10)
-- [ ] **PLAN-03**: App generates transplant-outdoors dates based on frost dates and seed packet data
-- [ ] **PLAN-04**: Schedule handles both cool-season crops (plant before last frost) and warm-season crops (plant after last frost) correctly
-- [ ] **PLAN-05**: Planting dates derived from scraped seed packet data (weeks before last frost, days to germination, etc.)
+- [x] **PLAN-01**: User can select which seeds from inventory to grow this season
+- [x] **PLAN-02**: App generates planting schedule with start-indoors dates based on Halifax MA last frost (~May 10)
+- [x] **PLAN-03**: App generates transplant-outdoors dates based on frost dates and seed packet data
+- [x] **PLAN-04**: Schedule handles both cool-season crops (plant before last frost) and warm-season crops (plant after last frost) correctly
+- [x] **PLAN-05**: Planting dates derived from scraped seed packet data (weeks before last frost, days to germination, etc.)
 
 ### Schedule Views
 
@@ -97,11 +97,11 @@
 | INVT-05 | Phase 2 | Complete |
 | VIAB-01 | Phase 2 | Complete |
 | VIAB-02 | Phase 2 | Complete |
-| PLAN-01 | Phase 3 | Pending |
-| PLAN-02 | Phase 3 | Pending |
-| PLAN-03 | Phase 3 | Pending |
-| PLAN-04 | Phase 3 | Pending |
-| PLAN-05 | Phase 3 | Pending |
+| PLAN-01 | Phase 3 | Complete |
+| PLAN-02 | Phase 3 | Complete |
+| PLAN-03 | Phase 3 | Complete |
+| PLAN-04 | Phase 3 | Complete |
+| PLAN-05 | Phase 3 | Complete |
 | VIEW-01 | Phase 3 | Pending |
 | VIEW-02 | Phase 3 | Pending |
 | VIAB-03 | Phase 4 | Pending |
