@@ -39,8 +39,8 @@
 
 ### Schedule Views
 
-- [ ] **VIEW-01**: User can view planting schedule as a sorted action list with dates
-- [ ] **VIEW-02**: User can view planting schedule as a visual calendar/timeline showing the full season
+- [x] **VIEW-01**: User can view planting schedule as a sorted action list with dates
+- [x] **VIEW-02**: User can view planting schedule as a visual calendar/timeline showing the full season
 - [ ] **VIEW-03**: User can view a "this week" focused view showing only current and upcoming week's actions
 - [ ] **VIEW-04**: User can print the planting schedule in a print-friendly format
 
@@ -102,8 +102,8 @@
 | PLAN-03 | Phase 3 | Complete |
 | PLAN-04 | Phase 3 | Complete |
 | PLAN-05 | Phase 3 | Complete |
-| VIEW-01 | Phase 3 | Pending |
-| VIEW-02 | Phase 3 | Pending |
+| VIEW-01 | Phase 3 | Complete |
+| VIEW-02 | Phase 3 | Complete |
 | VIAB-03 | Phase 4 | Pending |
 | VIAB-04 | Phase 4 | Pending |
 | VIAB-05 | Phase 4 | Pending |
