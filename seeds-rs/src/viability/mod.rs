@@ -163,4 +163,120 @@ mod tests {
         assert_eq!(est.max_years, 1);
         assert_eq!(est.percentage, 0);
     }
+
+    // --- color_tier tests ---
+
+    #[test]
+    fn color_tier_100_is_green() {
+        let est = estimate_viability_with_year(Some("Tomato"), None, Some(2026), 2026).unwrap();
+        assert_eq!(est.percentage, 100);
+        assert_eq!(est.color_tier(), "viability-green");
+    }
+
+    #[test]
+    fn color_tier_75_is_green() {
+        // Tomato max 4, age 1 -> 75%
+        let est = estimate_viability_with_year(Some("Tomato"), None, Some(2025), 2026).unwrap();
+        assert_eq!(est.percentage, 75);
+        assert_eq!(est.color_tier(), "viability-green");
+    }
+
+    #[test]
+    fn color_tier_74_is_yellow() {
+        // Lettuce max 5, age 2 -> 60% (yellow range)
+        let est = estimate_viability_with_year(Some("Lettuce"), None, Some(2024), 2026).unwrap();
+        assert!(est.percentage >= 50 && est.percentage <= 74);
+        assert_eq!(est.color_tier(), "viability-yellow");
+    }
+
+    #[test]
+    fn color_tier_50_is_yellow() {
+        // Tomato max 4, age 2 -> 50%
+        let est = estimate_viability_with_year(Some("Tomato"), None, Some(2024), 2026).unwrap();
+        assert_eq!(est.percentage, 50);
+        assert_eq!(est.color_tier(), "viability-yellow");
+    }
+
+    #[test]
+    fn color_tier_49_is_orange() {
+        // Basil max 5, age 3 -> 40% (orange range)
+        let est = estimate_viability_with_year(Some("Basil"), None, Some(2023), 2026).unwrap();
+        assert!(est.percentage >= 25 && est.percentage <= 49);
+        assert_eq!(est.color_tier(), "viability-orange");
+    }
+
+    #[test]
+    fn color_tier_25_is_orange() {
+        // Tomato max 4, age 3 -> 25%
+        let est = estimate_viability_with_year(Some("Tomato"), None, Some(2023), 2026).unwrap();
+        assert_eq!(est.percentage, 25);
+        assert_eq!(est.color_tier(), "viability-orange");
+    }
+
+    #[test]
+    fn color_tier_24_is_red() {
+        // Corn max 5, age 4 -> 20% (red range)
+        let est = estimate_viability_with_year(Some("Corn"), None, Some(2022), 2026).unwrap();
+        assert!(est.percentage <= 24);
+        assert_eq!(est.color_tier(), "viability-red");
+    }
+
+    #[test]
+    fn color_tier_0_is_red() {
+        let est = estimate_viability_with_year(Some("Tomato"), None, Some(2020), 2026).unwrap();
+        assert_eq!(est.percentage, 0);
+        assert_eq!(est.color_tier(), "viability-red");
+    }
+
+    // --- warning_message tests ---
+
+    #[test]
+    fn warning_message_at_0_percent() {
+        let est = estimate_viability_with_year(Some("Tomato"), None, Some(2020), 2026).unwrap();
+        assert_eq!(est.percentage, 0);
+        let msg = est.warning_message().unwrap();
+        assert!(msg.contains("exceeded"), "Expected 'exceeded' in: {}", msg);
+        assert!(msg.contains("replacing") || msg.contains("replace"), "Expected 'replace' in: {}", msg);
+    }
+
+    #[test]
+    fn warning_message_last_year() {
+        // Tomato max 4, age 3 -> 25%, age_years+1 >= max_years (3+1=4 >= 4)
+        let est = estimate_viability_with_year(Some("Tomato"), None, Some(2023), 2026).unwrap();
+        assert!(est.percentage > 0);
+        assert!(est.age_years + 1 >= est.max_years);
+        let msg = est.warning_message().unwrap();
+        assert!(msg.contains("last year") || msg.contains("Last year"), "Expected 'last year' in: {}", msg);
+    }
+
+    #[test]
+    fn warning_message_healthy_seed() {
+        let est = estimate_viability_with_year(Some("Tomato"), None, Some(2026), 2026).unwrap();
+        assert_eq!(est.percentage, 100);
+        assert!(est.warning_message().is_none());
+    }
+
+    // --- sow_multiplier tests ---
+
+    #[test]
+    fn sow_multiplier_high_viability_none() {
+        let est = estimate_viability_with_year(Some("Tomato"), None, Some(2026), 2026).unwrap();
+        assert!(est.percentage >= 90);
+        assert!(est.sow_multiplier().is_none());
+    }
+
+    #[test]
+    fn sow_multiplier_zero_viability_none() {
+        let est = estimate_viability_with_year(Some("Tomato"), None, Some(2020), 2026).unwrap();
+        assert_eq!(est.percentage, 0);
+        assert!(est.sow_multiplier().is_none());
+    }
+
+    #[test]
+    fn sow_multiplier_50_percent_is_2x() {
+        let est = estimate_viability_with_year(Some("Tomato"), None, Some(2024), 2026).unwrap();
+        assert_eq!(est.percentage, 50);
+        let mult = est.sow_multiplier().unwrap();
+        assert!((mult - 2.0).abs() < 0.01, "Expected ~2.0, got {}", mult);
+    }
 }
