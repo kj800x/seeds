@@ -63,8 +63,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Schedule engine (planting text parser, date calculator, season_plans DB table, plan toggle UI)
-- [ ] 03-02-PLAN.md — Schedule views (sorted action list, CSS Grid timeline, nav update, schedule page styling)
+- [x] 03-01-PLAN.md — Schedule engine (planting text parser, date calculator, season_plans DB table, plan toggle UI)
+- [x] 03-02-PLAN.md — Schedule views (sorted action list, CSS Grid timeline, nav update, schedule page styling)
 
 ### Phase 4: Polish + Differentiators
 **Goal**: Enhanced viability feedback, focused schedule views, and print support that round out the user experience
@@ -75,10 +75,10 @@ Plans:
   2. App warns user about seeds nearing end of useful life and suggests over-sowing quantities for reduced germination
   3. User can view a "this week" focused view showing only current and upcoming actions
   4. User can print the planting schedule in a clean, print-friendly format
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 04-01: TBD
+- [ ] 04-01-PLAN.md — Viability color coding, warnings, sow multiplier, "this week" schedule view, print stylesheet
 
 ## Progress
 
@@ -90,4 +90,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | 1. Foundation + Scraping | 3/3 | Complete   | 2026-03-08 |
 | 2. Seed Inventory + Viability | 2/2 | Complete | 2026-03-08 |
 | 3. Season Planning + Schedule Views | 2/2 | Complete   | 2026-03-09 |
-| 4. Polish + Differentiators | 0/? | Not started | - |
+| 4. Polish + Differentiators | 0/1 | Not started | - |
