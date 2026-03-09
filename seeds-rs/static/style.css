@@ -316,6 +316,48 @@ a:hover {
     content: " \00b7 ";
 }
 
+/* Season Plan Toggle */
+.seed-item {
+    display: flex;
+    align-items: center;
+}
+
+.seed-item .seed-row {
+    flex: 1;
+    min-width: 0;
+}
+
+.btn-plan-toggle {
+    flex-shrink: 0;
+    padding: 4px 12px;
+    margin-right: 12px;
+    font-size: 0.78rem;
+    font-family: var(--font-stack);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-cream);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.btn-plan-toggle:hover {
+    border-color: var(--color-earth-green-light);
+    color: var(--color-earth-green);
+    background: var(--color-cream-dark);
+}
+
+.btn-plan-toggle.active {
+    background: var(--color-earth-green);
+    color: var(--color-white);
+    border-color: var(--color-earth-green-dark);
+}
+
+.btn-plan-toggle.active:hover {
+    background: var(--color-earth-green-dark);
+}
+
 /* Viability in Seed List */
 .viability {
     color: var(--color-earth-green);

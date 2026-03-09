@@ -1,6 +1,7 @@
 use axum::extract::State;
+use chrono::Datelike;
 use maud::Markup;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::db::models::AppState;
 use crate::db::queries;
@@ -17,5 +18,10 @@ pub async fn home(State(state): State<AppState>) -> Result<Markup, AppError> {
         .await?
         .into_iter()
         .collect();
-    Ok(home_page(&seeds, &newest_purchases, &purchase_counts))
+    let current_year = chrono::Local::now().year() as i64;
+    let planned_seeds: HashSet<i64> = queries::planned_seed_ids(&state.db, current_year)
+        .await?
+        .into_iter()
+        .collect();
+    Ok(home_page(&seeds, &newest_purchases, &purchase_counts, &planned_seeds))
 }

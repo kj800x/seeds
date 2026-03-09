@@ -1,14 +1,30 @@
 use maud::{html, Markup};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::db::models::Seed;
 use crate::viability::estimate_viability;
 use super::layout::layout;
 
+/// Render a plan toggle button for a seed. Used in both the seed list and the toggle POST response.
+pub fn plan_toggle_button(seed_id: i64, in_plan: bool) -> Markup {
+    let label = if in_plan { "In Plan" } else { "Add to Plan" };
+    let class = if in_plan { "btn-plan-toggle active" } else { "btn-plan-toggle" };
+    html! {
+        button class=(class)
+               hx-post=(format!("/plan/toggle/{}", seed_id))
+               hx-swap="outerHTML"
+               onclick="event.stopPropagation(); event.preventDefault();"
+        {
+            (label)
+        }
+    }
+}
+
 pub fn home_page(
     seeds: &[Seed],
     newest_purchases: &HashMap<i64, i64>,
     purchase_counts: &HashMap<i64, i64>,
+    planned_seeds: &HashSet<i64>,
 ) -> Markup {
     let content = html! {
         section.add-seed {
@@ -39,7 +55,8 @@ pub fn home_page(
                     @for seed in seeds {
                         @let newest_year = newest_purchases.get(&seed.id).copied();
                         @let count = purchase_counts.get(&seed.id).copied().unwrap_or(0);
-                        li {
+                        @let in_plan = planned_seeds.contains(&seed.id);
+                        li.seed-item {
                             a.seed-row href=(format!("/seeds/{}", seed.id)) {
                                 div.seed-row-title { (seed.title) }
                                 div.seed-row-meta {
@@ -73,6 +90,7 @@ pub fn home_page(
                                     }
                                 }
                             }
+                            (plan_toggle_button(seed.id, in_plan))
                         }
                     }
                 }

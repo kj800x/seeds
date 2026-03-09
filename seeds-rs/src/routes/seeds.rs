@@ -4,10 +4,13 @@ use axum::response::{IntoResponse, Response};
 use maud::{html, Markup};
 use serde::Deserialize;
 
+use chrono::Datelike;
+
 use crate::db::models::AppState;
 use crate::db::queries;
 use crate::error::AppError;
 use crate::scraper;
+use crate::templates::home::plan_toggle_button;
 use crate::templates::seed_detail::{seed_detail_page, seed_purchases_section};
 
 #[derive(Deserialize)]
@@ -228,4 +231,14 @@ pub async fn delete_seed_handler(
         "",
     )
         .into_response())
+}
+
+/// POST /plan/toggle/{seed_id} - Toggle a seed in/out of this year's season plan
+pub async fn toggle_plan(
+    State(state): State<AppState>,
+    Path(seed_id): Path<i64>,
+) -> Result<Markup, AppError> {
+    let current_year = chrono::Local::now().year() as i64;
+    let in_plan = queries::toggle_season_plan(&state.db, seed_id, current_year).await?;
+    Ok(plan_toggle_button(seed_id, in_plan))
 }
