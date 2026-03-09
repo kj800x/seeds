@@ -1037,6 +1037,23 @@ a:hover {
     line-height: 1.4;
 }
 
+/* Schedule Tabs */
+.schedule-tabs { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 2px solid #e0d5c1; }
+.schedule-tabs .tab { padding: 0.5rem 1.25rem; text-decoration: none; color: #6b5b4b; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+.schedule-tabs .tab.active { color: #3d8b3d; border-bottom-color: #3d8b3d; font-weight: 600; }
+.schedule-tabs .tab:hover { color: #3d8b3d; text-decoration: none; }
+
+/* Print Stylesheet */
+@media print {
+    .app-header, .nav, .btn-plan-toggle, .add-seed, .schedule-tabs,
+    .delete-section, .add-purchase-form, .btn { display: none; }
+    .content { max-width: none; padding: 0; margin: 0; }
+    .schedule-section { box-shadow: none; border: none; }
+    body { font-size: 12pt; color: #000; }
+    a { color: inherit; text-decoration: none; }
+    .timeline, .timeline-today { display: none; }
+}
+
 /* Responsive */
 @media (max-width: 640px) {
     .app-header {

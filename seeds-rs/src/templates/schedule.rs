@@ -54,41 +54,87 @@ pub fn schedule_page_template(
     year: i32,
 ) -> Markup {
     let content = html! {
-        // Section A: Action List
-        section.schedule-section {
-            h2 { "Planting Schedule " (year) }
-
-            @if seeds_with_timing.is_empty() {
-                div.empty-state {
-                    p { "No seeds planned yet." }
-                    p.hint { "Go to " a href="/" { "Seeds" } " to add some to your plan." }
-                }
-            } @else if actions.is_empty() && manual_seeds.is_empty() {
-                div.empty-state {
-                    p { "No computable planting dates for your planned seeds." }
-                    p.hint { "Check the packet instructions for timing details." }
-                }
-            } @else {
-                // Group actions by month
-                (render_action_list(actions, year))
-
-                // Manual review section
-                @if !manual_seeds.is_empty() {
-                    (render_manual_review(manual_seeds))
-                }
-            }
+        // Tab navigation
+        div.schedule-tabs {
+            a.tab.active href="/schedule"
+                hx-get="/schedule" hx-target=".schedule-content" hx-push-url="true" { "Full Season" }
+            a.tab href="/schedule/week"
+                hx-get="/schedule/week" hx-target=".schedule-content" hx-push-url="true" { "This Week" }
         }
 
-        // Section B: Visual Timeline
-        @if !seeds_with_timing.is_empty() {
+        div.schedule-content {
+            // Section A: Action List
             section.schedule-section {
-                h2 { "Season Timeline" }
-                (render_timeline(actions, seeds_with_timing, year))
+                h2 { "Planting Schedule " (year) }
+
+                @if seeds_with_timing.is_empty() {
+                    div.empty-state {
+                        p { "No seeds planned yet." }
+                        p.hint { "Go to " a href="/" { "Seeds" } " to add some to your plan." }
+                    }
+                } @else if actions.is_empty() && manual_seeds.is_empty() {
+                    div.empty-state {
+                        p { "No computable planting dates for your planned seeds." }
+                        p.hint { "Check the packet instructions for timing details." }
+                    }
+                } @else {
+                    // Group actions by month
+                    (render_action_list(actions, year))
+
+                    // Manual review section
+                    @if !manual_seeds.is_empty() {
+                        (render_manual_review(manual_seeds))
+                    }
+                }
+            }
+
+            // Section B: Visual Timeline
+            @if !seeds_with_timing.is_empty() {
+                section.schedule-section {
+                    h2 { "Season Timeline" }
+                    (render_timeline(actions, seeds_with_timing, year))
+                }
             }
         }
     };
 
     layout_with_nav("Schedule", "schedule", content)
+}
+
+/// Render the "This Week" filtered schedule view.
+pub fn this_week_template(
+    actions: &[PlantingAction],
+    next_action: Option<&PlantingAction>,
+    year: i32,
+) -> Markup {
+    let content = html! {
+        // Tab navigation
+        div.schedule-tabs {
+            a.tab href="/schedule"
+                hx-get="/schedule" hx-target=".schedule-content" hx-push-url="true" { "Full Season" }
+            a.tab.active href="/schedule/week"
+                hx-get="/schedule/week" hx-target=".schedule-content" hx-push-url="true" { "This Week" }
+        }
+
+        div.schedule-content {
+            section.schedule-section {
+                h2 { "This Week" }
+
+                @if actions.is_empty() {
+                    div.empty-state {
+                        p { "No actions this week." }
+                        @if let Some(next) = next_action {
+                            p.hint { "Next up: " (action_type_label(&next.action_type)) " " (next.seed_title) " on " (format_date(&next.date)) "." }
+                        }
+                    }
+                } @else {
+                    (render_action_list(actions, year))
+                }
+            }
+        }
+    };
+
+    layout_with_nav("This Week", "schedule", content)
 }
 
 /// Render the action list grouped by month.

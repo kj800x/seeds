@@ -51,6 +51,7 @@ async fn main() {
         .route("/seeds/{id}/purchases/{purchase_id}/edit", get(routes::seeds::edit_purchase_form))
         .route("/seeds/add", post(routes::seeds::add_seed))
         .route("/schedule", get(routes::schedule::schedule_page))
+        .route("/schedule/week", get(routes::schedule::this_week))
         .route("/plan/toggle/{seed_id}", post(routes::seeds::toggle_plan))
         .nest_service("/static", ServeDir::new("static"))
         .nest_service("/images", ServeDir::new("data/images"))
