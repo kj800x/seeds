@@ -53,6 +53,15 @@ pub struct SeedImage {
     pub created_at: Option<String>,
 }
 
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct SeasonPlan {
+    pub id: i64,
+    pub seed_id: i64,
+    pub year: i64,
+    pub notes: Option<String>,
+    pub created_at: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct AppState {
     pub db: SqlitePool,

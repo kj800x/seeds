@@ -1,6 +1,7 @@
 mod db;
 mod error;
 mod routes;
+mod schedule;
 mod scraper;
 mod templates;
 mod viability;

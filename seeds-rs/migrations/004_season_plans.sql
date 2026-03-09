@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS season_plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    seed_id INTEGER NOT NULL REFERENCES seeds(id) ON DELETE CASCADE,
+    year INTEGER NOT NULL,
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(seed_id, year)
+);

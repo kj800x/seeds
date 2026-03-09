@@ -1,6 +1,6 @@
 use sqlx::SqlitePool;
 
-use super::models::{Seed, SeedImage, SeedPurchase};
+use super::models::{Seed, SeasonPlan, SeedImage, SeedPurchase};
 
 pub async fn list_seeds(pool: &SqlitePool) -> Result<Vec<Seed>, sqlx::Error> {
     sqlx::query_as::<_, Seed>("SELECT * FROM seeds ORDER BY created_at DESC")
@@ -163,6 +163,99 @@ pub async fn delete_purchase(pool: &SqlitePool, id: i64) -> Result<bool, sqlx::E
         .await?;
 
     Ok(result.rows_affected() > 0)
+}
+
+/// Get the newest purchase year for each seed (for seed list display).
+/// Returns (seed_id, newest_purchase_year) pairs.
+pub async fn newest_purchase_per_seed(
+    pool: &SqlitePool,
+) -> Result<Vec<(i64, i64)>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, (i64, i64)>(
+        "SELECT seed_id, MAX(purchase_year) FROM seed_purchases GROUP BY seed_id",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
+}
+
+/// Count purchases per seed
+pub async fn purchase_count_per_seed(
+    pool: &SqlitePool,
+) -> Result<Vec<(i64, i64)>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, (i64, i64)>(
+        "SELECT seed_id, COUNT(*) FROM seed_purchases GROUP BY seed_id",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
+}
+
+// --- Season Plan CRUD ---
+
+/// List all season plans for a given year.
+pub async fn list_season_plans(pool: &SqlitePool, year: i64) -> Result<Vec<SeasonPlan>, sqlx::Error> {
+    sqlx::query_as::<_, SeasonPlan>("SELECT * FROM season_plans WHERE year = ? ORDER BY created_at DESC")
+        .bind(year)
+        .fetch_all(pool)
+        .await
+}
+
+/// Check if a seed is in a given year's plan.
+pub async fn is_seed_in_plan(pool: &SqlitePool, seed_id: i64, year: i64) -> Result<bool, sqlx::Error> {
+    let row = sqlx::query_as::<_, (i64,)>(
+        "SELECT COUNT(*) FROM season_plans WHERE seed_id = ? AND year = ?"
+    )
+    .bind(seed_id)
+    .bind(year)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(row.0 > 0)
+}
+
+/// Toggle a seed in/out of a year's plan. Returns true if the seed is now in the plan.
+pub async fn toggle_season_plan(pool: &SqlitePool, seed_id: i64, year: i64) -> Result<bool, sqlx::Error> {
+    let exists = is_seed_in_plan(pool, seed_id, year).await?;
+
+    if exists {
+        sqlx::query("DELETE FROM season_plans WHERE seed_id = ? AND year = ?")
+            .bind(seed_id)
+            .bind(year)
+            .execute(pool)
+            .await?;
+        Ok(false)
+    } else {
+        sqlx::query("INSERT INTO season_plans (seed_id, year) VALUES (?, ?)")
+            .bind(seed_id)
+            .bind(year)
+            .execute(pool)
+            .await?;
+        Ok(true)
+    }
+}
+
+/// List all seeds that are in a given year's plan (JOIN seeds with season_plans).
+pub async fn list_planned_seeds(pool: &SqlitePool, year: i64) -> Result<Vec<Seed>, sqlx::Error> {
+    sqlx::query_as::<_, Seed>(
+        "SELECT s.* FROM seeds s INNER JOIN season_plans sp ON s.id = sp.seed_id WHERE sp.year = ? ORDER BY s.title"
+    )
+    .bind(year)
+    .fetch_all(pool)
+    .await
+}
+
+/// Get all planned seed IDs for a given year (efficient for set lookup).
+pub async fn planned_seed_ids(pool: &SqlitePool, year: i64) -> Result<Vec<i64>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, (i64,)>(
+        "SELECT seed_id FROM season_plans WHERE year = ?"
+    )
+    .bind(year)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows.into_iter().map(|(id,)| id).collect())
 }
 
 pub async fn delete_seed(pool: &SqlitePool, id: i64) -> Result<bool, sqlx::Error> {
