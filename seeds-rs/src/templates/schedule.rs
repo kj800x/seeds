@@ -5,7 +5,7 @@ use maud::{html, Markup};
 
 use crate::db::models::Seed;
 use crate::schedule::{ActionType, PlantingAction, PlantingTiming};
-use super::layout::layout;
+use super::layout::layout_with_nav;
 
 /// Timeline spans March 1 through September 30.
 fn timeline_start(year: i32) -> NaiveDate {
@@ -88,7 +88,7 @@ pub fn schedule_page_template(
         }
     };
 
-    layout("Schedule", content)
+    layout_with_nav("Schedule", "schedule", content)
 }
 
 /// Render the action list grouped by month.

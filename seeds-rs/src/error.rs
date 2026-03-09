@@ -58,8 +58,7 @@ impl IntoResponse for AppError {
         <h1 class="logo">Seeds</h1>
         <nav class="main-nav">
             <a class="nav-link active" href="/">Seeds</a>
-            <span class="nav-link disabled">Inventory</span>
-            <span class="nav-link disabled">Schedule</span>
+            <a class="nav-link" href="/schedule">Schedule</a>
         </nav>
     </header>
     <main class="content">

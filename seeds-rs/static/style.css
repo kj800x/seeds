@@ -803,6 +803,231 @@ a:hover {
     color: var(--color-earth-green-dark);
 }
 
+/* Schedule Page */
+.schedule-section {
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-sm);
+}
+
+.schedule-section h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--color-warm-brown);
+    margin-bottom: 16px;
+}
+
+/* Schedule Action List */
+.schedule-actions {
+    margin-top: 8px;
+}
+
+.action-row {
+    display: flex;
+    gap: 1rem;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--color-cream-dark);
+    align-items: baseline;
+}
+
+.action-date {
+    min-width: 5rem;
+    font-weight: 600;
+    color: var(--color-text);
+    font-size: 0.9rem;
+}
+
+.action-type {
+    min-width: 9rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.action-type.start-indoors {
+    color: #4a7ab5;
+}
+
+.action-type.transplant {
+    color: #4a8a4a;
+}
+
+.action-type.direct-sow {
+    color: #b8862b;
+}
+
+.action-seed {
+    font-size: 0.9rem;
+}
+
+.action-seed a {
+    color: var(--color-earth-green);
+    font-weight: 500;
+}
+
+.action-seed a:hover {
+    color: var(--color-earth-green-dark);
+    text-decoration: underline;
+}
+
+.action-notes {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    font-style: italic;
+}
+
+.month-header {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-top: 1rem;
+    padding-bottom: 4px;
+    border-bottom: 2px solid var(--color-earth-green);
+    color: var(--color-text);
+}
+
+.month-header:first-child {
+    margin-top: 0;
+}
+
+/* Timeline */
+.timeline {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 4px 0;
+    margin-top: 8px;
+}
+
+.timeline-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+
+.timeline-header span {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    border-left: 1px solid var(--color-border);
+    padding: 4px 0;
+}
+
+.timeline-header span:first-child {
+    border-left: none;
+}
+
+.timeline-row {
+    display: contents;
+}
+
+.timeline-seed-name {
+    padding: 4px 8px;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--color-text);
+    align-self: center;
+}
+
+.timeline-bars {
+    position: relative;
+    height: 26px;
+    background: var(--color-cream);
+    border-radius: var(--radius-sm);
+}
+
+.timeline-bar {
+    position: absolute;
+    height: 100%;
+    border-radius: var(--radius-sm);
+    opacity: 0.85;
+}
+
+.timeline-bar.period-bar {
+    opacity: 0.5;
+    height: 80%;
+    top: 10%;
+}
+
+.timeline-bar.start-indoors {
+    background: #7c9ae0;
+}
+
+.timeline-bar.transplant {
+    background: #5cb85c;
+}
+
+.timeline-bar.direct-sow {
+    background: #f0ad4e;
+}
+
+.timeline-bar.manual {
+    background: var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.timeline-bar-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    font-weight: 600;
+}
+
+.timeline-today {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--color-terracotta);
+    z-index: 10;
+}
+
+/* Manual Review Section */
+.manual-review {
+    margin-top: 1.5rem;
+    padding: 16px;
+    background: #fdf8e8;
+    border-radius: var(--radius-md);
+    border: 1px solid #e8d8a0;
+}
+
+.manual-review h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-warm-brown);
+    margin-bottom: 8px;
+}
+
+.manual-review-desc {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    margin-bottom: 12px;
+}
+
+.manual-seed-item {
+    padding: 8px 0;
+    border-bottom: 1px solid #e8d8a0;
+}
+
+.manual-seed-item:last-child {
+    border-bottom: none;
+}
+
+.manual-seed-item a {
+    font-weight: 500;
+    color: var(--color-earth-green);
+}
+
+.manual-seed-instructions {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
 /* Responsive */
 @media (max-width: 640px) {
     .app-header {

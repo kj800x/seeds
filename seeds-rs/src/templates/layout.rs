@@ -1,6 +1,13 @@
 use maud::{html, Markup, DOCTYPE};
 
 pub fn layout(title: &str, content: Markup) -> Markup {
+    layout_with_nav(title, "", content)
+}
+
+pub fn layout_with_nav(title: &str, active_nav: &str, content: Markup) -> Markup {
+    // Determine which nav item is active; default to "seeds" if not specified
+    let active = if active_nav.is_empty() { "seeds" } else { active_nav };
+
     html! {
         (DOCTYPE)
         html lang="en" {
@@ -22,9 +29,10 @@ pub fn layout(title: &str, content: Markup) -> Markup {
                 header.app-header {
                     h1.logo { "Seeds" }
                     nav.main-nav {
-                        a.nav-link.active href="/" { "Seeds" }
-                        span.nav-link.disabled { "Inventory" }
-                        span.nav-link.disabled { "Schedule" }
+                        a.nav-link href="/"
+                            class=@if active == "seeds" { "active" } { "Seeds" }
+                        a.nav-link href="/schedule"
+                            class=@if active == "schedule" { "active" } { "Schedule" }
                     }
                 }
                 main.content {
