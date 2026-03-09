@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation + Scraping** - Bootable server with SQLite storage and validated Botanical Interests product scraper (completed 2026-03-08)
 - [x] **Phase 2: Seed Inventory + Viability** - Full inventory CRUD with multi-lot purchase tracking and viability estimation based on species and seed age (completed 2026-03-08)
 - [x] **Phase 3: Season Planning + Schedule Views** - Schedule generation from inventory selections with action list and calendar views (completed 2026-03-09)
-- [ ] **Phase 4: Polish + Differentiators** - Enhanced viability indicators, focused views, and print support
+- [x] **Phase 4: Polish + Differentiators** - Enhanced viability indicators, focused views, and print support (completed 2026-03-09)
 
 ## Phase Details
 
@@ -78,7 +78,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 04-01-PLAN.md — Viability color coding, warnings, sow multiplier, "this week" schedule view, print stylesheet
+- [x] 04-01-PLAN.md — Viability color coding, warnings, sow multiplier, "this week" schedule view, print stylesheet
 
 ## Progress
 
@@ -90,4 +90,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | 1. Foundation + Scraping | 3/3 | Complete   | 2026-03-08 |
 | 2. Seed Inventory + Viability | 2/2 | Complete | 2026-03-08 |
 | 3. Season Planning + Schedule Views | 2/2 | Complete   | 2026-03-09 |
-| 4. Polish + Differentiators | 0/1 | Not started | - |
+| 4. Polish + Differentiators | 1/1 | Complete | 2026-03-09 |

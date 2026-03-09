@@ -25,9 +25,9 @@
 
 - [x] **VIAB-01**: App displays estimated germination viability percentage based on species and seed age
 - [x] **VIAB-02**: Viability estimation uses a species-based lookup table of viability curves
-- [ ] **VIAB-03**: Inventory list shows color-coded viability indicators (green/yellow/orange/red) at a glance
-- [ ] **VIAB-04**: App warns user about seeds nearing end of useful life ("use or lose" alerts)
-- [ ] **VIAB-05**: App suggests over-sowing quantity for seeds with reduced germination rates
+- [x] **VIAB-03**: Inventory list shows color-coded viability indicators (green/yellow/orange/red) at a glance
+- [x] **VIAB-04**: App warns user about seeds nearing end of useful life ("use or lose" alerts)
+- [x] **VIAB-05**: App suggests over-sowing quantity for seeds with reduced germination rates
 
 ### Season Planning
 
@@ -104,9 +104,9 @@
 | PLAN-05 | Phase 3 | Complete |
 | VIEW-01 | Phase 3 | Complete |
 | VIEW-02 | Phase 3 | Complete |
-| VIAB-03 | Phase 4 | Pending |
-| VIAB-04 | Phase 4 | Pending |
-| VIAB-05 | Phase 4 | Pending |
+| VIAB-03 | Phase 4 | Complete |
+| VIAB-04 | Phase 4 | Complete |
+| VIAB-05 | Phase 4 | Complete |
 | VIEW-03 | Phase 4 | Pending |
 | VIEW-04 | Phase 4 | Pending |
 

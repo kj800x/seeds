@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-03-09T01:51:32.487Z"
-last_activity: 2026-03-09 -- Completed plan 03-02 (schedule views + timeline)
+status: in-progress
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-03-09T02:08:00Z"
+last_activity: 2026-03-09 -- Completed plan 04-01 (viability polish + schedule enhancements)
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 8
+  completed_plans: 8
   percent: 100
 ---
 
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-08)
 
 **Core value:** Take the complicated scheduling math out of starting seeds indoors -- tell the app what you want to grow, and it tells you when to plant, transplant, and expect harvest.
-**Current focus:** Phase 3 complete. Phase 4: Polish + Refinements next.
+**Current focus:** Phase 4 in progress. Viability polish and schedule enhancements complete.
 
 ## Current Position
 
-Phase: 3 of 4 (Season Planning + Schedule Views) -- COMPLETE
-Plan: 2 of 2 in current phase (done)
-Status: Phase 3 complete, ready for Phase 4
-Last activity: 2026-03-09 -- Completed plan 03-02 (schedule views + timeline)
+Phase: 4 of 4 (Polish + Differentiators)
+Plan: 1 of 1 in current phase (done)
+Status: Phase 4 Plan 1 complete
+Last activity: 2026-03-09 -- Completed plan 04-01 (viability polish + schedule enhancements)
 
 Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
-- Average duration: 6min
-- Total execution time: 0.63 hours
+- Total plans completed: 8
+- Average duration: 5min
+- Total execution time: 0.68 hours
 
 **By Phase:**
 
@@ -46,9 +46,10 @@ Progress: [██████████] 100%
 | 01-foundation-scraping | 3/3 | 21min | 7min |
 | 02-seed-inventory-viability | 2/2 | 6min | 3min |
 | 03-season-planning-schedule-views | 2/2 | 12min | 6min |
+| 04-polish-differentiators | 1/1 | 3min | 3min |
 
 **Recent Trend:**
-- Last 5 plans: 01-03 (12min), 02-01 (3min), 02-02 (3min), 03-01 (9min), 03-02 (3min)
+- Last 5 plans: 02-01 (3min), 02-02 (3min), 03-01 (9min), 03-02 (3min), 04-01 (3min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -80,6 +81,9 @@ Recent decisions affecting current work:
 - [03-02]: Layout refactored to layout_with_nav(title, active_nav, content) for proper nav highlighting
 - [03-02]: Timeline period bars extend 6 weeks past action date for visual growing season indication
 - [03-02]: Removed disabled Inventory nav link entirely since no inventory page exists
+- [04-01]: Viability color tiers use fixed percentage ranges (75-100 green, 50-74 yellow, 25-49 orange, 0-24 red)
+- [04-01]: Sow multiplier calculated as 100/percentage, None for >= 90% or 0%
+- [04-01]: This Week view uses 14-day forward window plus overdue from current week (Monday)
 
 ### Pending Todos
 
@@ -92,6 +96,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-09T01:28:13Z
-Stopped at: Completed 03-02-PLAN.md
-Resume file: .planning/phases/03-season-planning-schedule-views/03-02-SUMMARY.md
+Last session: 2026-03-09T02:04:31Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: .planning/phases/04-polish-differentiators/04-01-SUMMARY.md
