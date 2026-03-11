@@ -4,7 +4,6 @@ use maud::{html, Markup, PreEscaped};
 use crate::db::models::{Seed, SeedImage, SeedPurchase};
 use crate::schedule::{parse_planting_timing_from_fields, compute_indoor_timeline, compute_outdoor_timeline};
 use crate::viability::estimate_viability;
-use super::home::plan_toggle_button;
 use super::layout::layout;
 use super::schedule::{seed_detail_timeline, seed_detail_dual_timeline};
 
@@ -100,7 +99,7 @@ fn detail_item(label: &str, value: &Option<String>) -> Markup {
 
 pub fn seed_detail_page(seed: &Seed, images: &[SeedImage], purchases: &[SeedPurchase], in_plan: bool, plan_start_method: Option<&str>) -> Markup {
     let hero_image = images.iter().find(|img| img.position == 1);
-    let current_year = chrono::Local::now().year() as i32;
+    let current_year = chrono::Local::now().year();
     let timing = parse_planting_timing_from_fields(
         seed.when_to_sow_outside.as_deref(),
         seed.when_to_start_inside.as_deref(),

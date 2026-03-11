@@ -4,6 +4,7 @@ use chrono::Datelike;
 use lookup::lookup_max_years;
 
 /// Estimated seed viability based on species and age.
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ViabilityEstimate {
     /// Viability percentage (0-100)
@@ -98,6 +99,7 @@ impl ViabilityEstimate {
 }
 
 /// Internal helper for testing with a specific current year.
+#[allow(dead_code)]
 fn estimate_viability_with_year(
     subcategory: Option<&str>,
     category: Option<&str>,

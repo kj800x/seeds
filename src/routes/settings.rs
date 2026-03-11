@@ -29,11 +29,11 @@ pub async fn reset_all_data(State(state): State<AppState>) -> Result<Markup, App
 
     // Clean up image files
     let images_dir = state.data_dir.join("images");
-    if images_dir.exists() {
-        if let Ok(entries) = std::fs::read_dir(&images_dir) {
-            for entry in entries.flatten() {
-                let _ = std::fs::remove_file(entry.path());
-            }
+    if images_dir.exists()
+        && let Ok(entries) = std::fs::read_dir(&images_dir)
+    {
+        for entry in entries.flatten() {
+            let _ = std::fs::remove_file(entry.path());
         }
     }
 

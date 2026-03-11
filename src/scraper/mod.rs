@@ -7,6 +7,7 @@ use crate::db::queries::{self, NewSeed, NewSeedImage};
 use crate::error::AppError;
 
 /// Result of a duplicate URL check -- carries the existing seed ID.
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct DuplicateSeed {
     pub existing_id: i64,

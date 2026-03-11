@@ -4,7 +4,6 @@ use maud::{html, Markup};
 use crate::db::models::Seed;
 use crate::schedule::{ActionType, PlantingAction, PlantingTiming, compute_seed_timeline, compute_indoor_timeline, compute_outdoor_timeline, compute_timeline_for_method, StartMethod, SeedTimeline};
 use crate::schedule::calculator::{PhaseType, last_frost_date};
-use super::home::plan_toggle_button;
 use super::layout::layout_with_nav;
 
 /// Timeline spans February 1 through October 31.

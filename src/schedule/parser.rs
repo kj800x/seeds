@@ -89,6 +89,7 @@ pub fn parse_planting_timing_from_fields(
 
 /// Legacy: Parse planting timing from the combined planting_instructions text field.
 /// Kept for backward compatibility; prefer parse_planting_timing_from_fields.
+#[allow(dead_code)]
 pub fn parse_planting_timing(text: &str) -> PlantingTiming {
     let lower = text.to_lowercase();
     let mut timing = PlantingTiming::default();

@@ -1,6 +1,7 @@
 use sqlx::SqlitePool;
 use std::path::PathBuf;
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct Seed {
     pub id: i64,
@@ -48,6 +49,7 @@ pub struct Seed {
     pub special_care: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct SeedPurchase {
     pub id: i64,
@@ -57,6 +59,7 @@ pub struct SeedPurchase {
     pub created_at: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct SeedImage {
     pub id: i64,
@@ -70,6 +73,7 @@ pub struct SeedImage {
     pub created_at: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct SeasonPlan {
     pub id: i64,

@@ -74,6 +74,7 @@ impl StartMethod {
         }
     }
 
+    #[allow(dead_code)]
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Indoor => "indoor",
@@ -83,6 +84,7 @@ impl StartMethod {
 }
 
 /// Complete timeline for a seed with all phases.
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct SeedTimeline {
     pub seed_id: i64,
@@ -272,9 +274,7 @@ pub fn compute_seed_timeline(seed: &Seed, timing: &PlantingTiming, year: i32) ->
 /// Compute the indoor-only timeline: sow → indoor growth → transplant → outdoor growing → harvest.
 /// Returns None if the seed has no indoor start option.
 pub fn compute_indoor_timeline(seed: &Seed, timing: &PlantingTiming, year: i32) -> Option<SeedTimeline> {
-    if timing.start_indoors_weeks_before.is_none() {
-        return None;
-    }
+    timing.start_indoors_weeks_before?;
 
     let frost = last_frost_date(year);
     let mut phases = Vec::new();
@@ -399,9 +399,7 @@ pub fn compute_indoor_timeline(seed: &Seed, timing: &PlantingTiming, year: i32) 
 /// Compute the outdoor-only timeline: direct sow → outdoor growing → harvest.
 /// Returns None if the seed has no direct sow option.
 pub fn compute_outdoor_timeline(seed: &Seed, timing: &PlantingTiming, year: i32) -> Option<SeedTimeline> {
-    if timing.direct_sow_weeks_relative.is_none() {
-        return None;
-    }
+    timing.direct_sow_weeks_relative?;
 
     let frost = last_frost_date(year);
     let mut phases = Vec::new();
@@ -470,6 +468,7 @@ pub fn compute_timeline_for_method(seed: &Seed, timing: &PlantingTiming, year: i
 }
 
 /// Generate a schedule of planting actions for seeds with parsed timing data.
+#[allow(dead_code)]
 pub fn generate_schedule(seeds_with_timing: &[(Seed, PlantingTiming)], year: i32) -> Vec<PlantingAction> {
     let mut actions: Vec<PlantingAction> = Vec::new();
 

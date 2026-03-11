@@ -7,6 +7,7 @@ pub struct ShopifyProductResponse {
     pub product: ShopifyProduct,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct ShopifyProduct {
     pub id: i64,
@@ -18,6 +19,7 @@ pub struct ShopifyProduct {
     pub image: Option<ShopifyImage>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
 pub struct ShopifyImage {
     pub id: i64,

@@ -288,12 +288,11 @@ pub async fn toggle_plan(
     let in_plan = queries::toggle_season_plan(&state.db, seed_id, current_year).await?;
 
     // When adding to plan, set the default start method based on recommendations
-    if in_plan {
-        if let Some(seed) = queries::get_seed(&state.db, seed_id).await? {
-            if let Some(method) = default_start_method(&seed) {
-                queries::update_plan_start_method(&state.db, seed_id, current_year, Some(method)).await?;
-            }
-        }
+    if in_plan
+        && let Some(seed) = queries::get_seed(&state.db, seed_id).await?
+        && let Some(method) = default_start_method(&seed)
+    {
+        queries::update_plan_start_method(&state.db, seed_id, current_year, Some(method)).await?;
     }
 
     // On the detail page, re-render the full timeline section so method selector appears

@@ -30,7 +30,7 @@ fn build_seeds_with_timing(planned: &[(Seed, Option<String>)]) -> Vec<(Seed, Pla
 pub async fn schedule_page(
     State(state): State<AppState>,
 ) -> Result<Markup, AppError> {
-    let current_year = chrono::Local::now().year() as i32;
+    let current_year = chrono::Local::now().year();
     let planned_with_methods = queries::list_planned_seeds_with_method(&state.db, current_year as i64).await?;
     let seeds_with_timing = build_seeds_with_timing(&planned_with_methods);
 
@@ -43,7 +43,7 @@ pub async fn schedule_page(
 pub async fn schedule_list(
     State(state): State<AppState>,
 ) -> Result<Markup, AppError> {
-    let current_year = chrono::Local::now().year() as i32;
+    let current_year = chrono::Local::now().year();
     let planned_with_methods = queries::list_planned_seeds_with_method(&state.db, current_year as i64).await?;
     let seeds_with_timing = build_seeds_with_timing(&planned_with_methods);
 
@@ -65,7 +65,7 @@ pub async fn schedule_list(
 pub async fn this_week(
     State(state): State<AppState>,
 ) -> Result<Markup, AppError> {
-    let current_year = chrono::Local::now().year() as i32;
+    let current_year = chrono::Local::now().year();
     let today = chrono::Local::now().date_naive();
     let window_end = today + chrono::Duration::days(14);
 
