@@ -18,22 +18,37 @@ fn seed_to_timing(seed: &Seed) -> PlantingTiming {
     )
 }
 
+fn build_seeds_with_timing(planned: &[(Seed, Option<String>)]) -> Vec<(Seed, PlantingTiming, Option<StartMethod>)> {
+    planned.iter().map(|(seed, method)| {
+        let timing = seed_to_timing(seed);
+        let start_method = StartMethod::from_str_opt(method.as_deref());
+        (seed.clone(), timing, start_method)
+    }).collect()
+}
+
+/// GET /schedule - Timeline page
 pub async fn schedule_page(
     State(state): State<AppState>,
 ) -> Result<Markup, AppError> {
     let current_year = chrono::Local::now().year() as i32;
     let planned_with_methods = queries::list_planned_seeds_with_method(&state.db, current_year as i64).await?;
+    let seeds_with_timing = build_seeds_with_timing(&planned_with_methods);
 
-    // Parse timing for each seed from structured fields
-    let seeds_with_timing: Vec<(Seed, PlantingTiming, Option<StartMethod>)> = planned_with_methods.iter().map(|(seed, method)| {
-        let timing = seed_to_timing(seed);
-        let start_method = StartMethod::from_str_opt(method.as_deref());
-        (seed.clone(), timing, start_method)
-    }).collect();
+    Ok(templates::schedule::timeline_page_template(
+        &seeds_with_timing, current_year
+    ))
+}
+
+/// GET /schedule/list - Action list page
+pub async fn schedule_list(
+    State(state): State<AppState>,
+) -> Result<Markup, AppError> {
+    let current_year = chrono::Local::now().year() as i32;
+    let planned_with_methods = queries::list_planned_seeds_with_method(&state.db, current_year as i64).await?;
+    let seeds_with_timing = build_seeds_with_timing(&planned_with_methods);
 
     let actions = generate_schedule_with_methods(&seeds_with_timing, current_year);
 
-    // Identify seeds with no actions (unparseable timing)
     let seeds_with_actions: HashSet<i64> = actions.iter().map(|a| a.seed_id).collect();
     let all_seeds: Vec<&Seed> = planned_with_methods.iter().map(|(s, _)| s).collect();
     let manual_seeds: Vec<&Seed> = all_seeds.iter()
@@ -41,11 +56,12 @@ pub async fn schedule_page(
         .copied()
         .collect();
 
-    Ok(templates::schedule::schedule_page_template(
+    Ok(templates::schedule::schedule_list_template(
         &actions, &manual_seeds, &seeds_with_timing, current_year
     ))
 }
 
+/// GET /schedule/week - This week page
 pub async fn this_week(
     State(state): State<AppState>,
 ) -> Result<Markup, AppError> {
@@ -53,21 +69,14 @@ pub async fn this_week(
     let today = chrono::Local::now().date_naive();
     let window_end = today + chrono::Duration::days(14);
 
-    // Monday of current week for overdue inclusion
     let weekday = today.weekday().num_days_from_monday();
     let start_of_week = today - chrono::Duration::days(weekday as i64);
 
     let planned_with_methods = queries::list_planned_seeds_with_method(&state.db, current_year as i64).await?;
-
-    let seeds_with_timing: Vec<(Seed, PlantingTiming, Option<StartMethod>)> = planned_with_methods.iter().map(|(seed, method)| {
-        let timing = seed_to_timing(seed);
-        let start_method = StartMethod::from_str_opt(method.as_deref());
-        (seed.clone(), timing, start_method)
-    }).collect();
+    let seeds_with_timing = build_seeds_with_timing(&planned_with_methods);
 
     let all_actions = generate_schedule_with_methods(&seeds_with_timing, current_year);
 
-    // Filter to 14-day window + overdue from current week
     let filtered: Vec<_> = all_actions.iter()
         .filter(|a| {
             (a.date >= today && a.date <= window_end)
@@ -76,7 +85,6 @@ pub async fn this_week(
         .cloned()
         .collect();
 
-    // Find the next upcoming action beyond the window for empty state
     let next_action = all_actions.iter()
         .find(|a| a.date > window_end);
 

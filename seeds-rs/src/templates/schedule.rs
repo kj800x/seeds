@@ -7,9 +7,9 @@ use crate::schedule::calculator::{PhaseType, last_frost_date};
 use super::home::plan_toggle_button;
 use super::layout::layout_with_nav;
 
-/// Timeline spans March 1 through October 31.
+/// Timeline spans February 1 through October 31.
 fn timeline_start(year: i32) -> NaiveDate {
-    NaiveDate::from_ymd_opt(year, 3, 1).unwrap()
+    NaiveDate::from_ymd_opt(year, 2, 1).unwrap()
 }
 
 fn timeline_end(year: i32) -> NaiveDate {
@@ -68,24 +68,59 @@ fn format_date(date: &NaiveDate) -> String {
     date.format("%b %e").to_string()
 }
 
-/// Render the full schedule page with action list and timeline views.
-pub fn schedule_page_template(
+/// Render the tab navigation for schedule pages.
+fn schedule_tabs(active_tab: &str) -> Markup {
+    html! {
+        div.schedule-tabs {
+            a.tab href="/schedule"
+                class=@if active_tab == "timeline" { "active" } { "Timeline" }
+            a.tab href="/schedule/list"
+                class=@if active_tab == "list" { "active" } { "Schedule" }
+            a.tab href="/schedule/week"
+                class=@if active_tab == "week" { "active" } { "This Week" }
+        }
+    }
+}
+
+/// Render the Timeline page (visual season overview).
+pub fn timeline_page_template(
+    seeds_with_timing: &[(Seed, PlantingTiming, Option<StartMethod>)],
+    year: i32,
+) -> Markup {
+    let content = html! {
+        (schedule_tabs("timeline"))
+
+        div.schedule-content {
+            section.schedule-section {
+                h2 { "Season Timeline " (year) }
+
+                @if seeds_with_timing.is_empty() {
+                    div.empty-state {
+                        p { "No seeds planned yet." }
+                        p.hint { "Go to " a href="/" { "Seeds" } " to add some to your plan." }
+                    }
+                } @else {
+                    (render_timeline_legend())
+                    (render_timeline(seeds_with_timing, year))
+                }
+            }
+        }
+    };
+
+    layout_with_nav("Timeline", "schedule", content)
+}
+
+/// Render the Schedule page (action list grouped by month).
+pub fn schedule_list_template(
     actions: &[PlantingAction],
     manual_seeds: &[&Seed],
     seeds_with_timing: &[(Seed, PlantingTiming, Option<StartMethod>)],
     year: i32,
 ) -> Markup {
     let content = html! {
-        // Tab navigation
-        div.schedule-tabs {
-            a.tab.active href="/schedule"
-                hx-get="/schedule" hx-target=".schedule-content" hx-push-url="true" { "Full Season" }
-            a.tab href="/schedule/week"
-                hx-get="/schedule/week" hx-target=".schedule-content" hx-push-url="true" { "This Week" }
-        }
+        (schedule_tabs("list"))
 
         div.schedule-content {
-            // Section A: Action List
             section.schedule-section {
                 h2 { "Planting Schedule " (year) }
 
@@ -100,22 +135,11 @@ pub fn schedule_page_template(
                         p.hint { "Check the packet instructions for timing details." }
                     }
                 } @else {
-                    // Group actions by month
                     (render_action_list(actions, year))
 
-                    // Manual review section
                     @if !manual_seeds.is_empty() {
                         (render_manual_review(manual_seeds))
                     }
-                }
-            }
-
-            // Section B: Visual Timeline
-            @if !seeds_with_timing.is_empty() {
-                section.schedule-section {
-                    h2 { "Season Timeline" }
-                    (render_timeline_legend())
-                    (render_timeline(seeds_with_timing, year))
                 }
             }
         }
@@ -131,13 +155,7 @@ pub fn this_week_template(
     year: i32,
 ) -> Markup {
     let content = html! {
-        // Tab navigation
-        div.schedule-tabs {
-            a.tab href="/schedule"
-                hx-get="/schedule" hx-target=".schedule-content" hx-push-url="true" { "Full Season" }
-            a.tab.active href="/schedule/week"
-                hx-get="/schedule/week" hx-target=".schedule-content" hx-push-url="true" { "This Week" }
-        }
+        (schedule_tabs("week"))
 
         div.schedule-content {
             section.schedule-section {
@@ -263,7 +281,7 @@ fn render_timeline(
     seeds_with_timing: &[(Seed, PlantingTiming, Option<StartMethod>)],
     year: i32,
 ) -> Markup {
-    let months = ["Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
+    let months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
 
     // Today line position
     let today = Local::now().date_naive();
@@ -276,6 +294,17 @@ fn render_timeline(
     let frost = last_frost_date(year);
     let frost_pct = date_to_percent(frost, year);
 
+    // Compute timelines and sort by earliest phase start date
+    let mut rows: Vec<(&Seed, SeedTimeline)> = seeds_with_timing.iter().map(|(seed, timing, method)| {
+        let timeline = if let Some(m) = method {
+            compute_timeline_for_method(seed, timing, year, *m)
+        } else {
+            compute_seed_timeline(seed, timing, year)
+        };
+        (seed, timeline)
+    }).collect();
+    rows.sort_by_key(|(_, tl)| tl.phases.first().map(|p| p.start).unwrap_or(NaiveDate::MAX));
+
     html! {
         div.timeline {
             // Header row: empty cell + month labels
@@ -287,12 +316,7 @@ fn render_timeline(
             }
 
             // One row per seed
-            @for (seed, timing, method) in seeds_with_timing {
-                @let timeline = if let Some(m) = method {
-                    compute_timeline_for_method(seed, timing, year, *m)
-                } else {
-                    compute_seed_timeline(seed, timing, year)
-                };
+            @for (seed, timeline) in &rows {
                 div.timeline-row {
                     div.timeline-seed-name {
                         a href=(format!("/seeds/{}", seed.id)) { (seed.title) }
@@ -449,7 +473,7 @@ fn render_plan_controls(seed: &Seed, in_plan: bool, has_indoor: bool, has_outdoo
 
 /// Render a single timeline bar (reusable for both combined and split views).
 fn render_single_timeline(timeline: &SeedTimeline, year: i32) -> Markup {
-    let months = ["Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
+    let months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
 
     let today = Local::now().date_naive();
     let t_start = timeline_start(year);

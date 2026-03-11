@@ -52,6 +52,7 @@ async fn main() {
         .route("/seeds/add", post(routes::seeds::add_seed))
         .route("/seeds/reparse", post(routes::seeds::reparse_all))
         .route("/schedule", get(routes::schedule::schedule_page))
+        .route("/schedule/list", get(routes::schedule::schedule_list))
         .route("/schedule/week", get(routes::schedule::this_week))
         .route("/plan/toggle/{seed_id}", post(routes::seeds::toggle_plan))
         .route("/plan/{seed_id}/start-method", post(routes::seeds::set_start_method))
