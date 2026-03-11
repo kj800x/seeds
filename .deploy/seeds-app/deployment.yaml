@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: seeds-app
+  name: seeds-app
+  namespace: kj800x
+spec:
+  replicas: 1
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      app: seeds-app
+  template:
+    metadata:
+      labels:
+        app: seeds-app
+    spec:
+      containers:
+        - command:
+            - seeds-rs
+          env:
+            - name: RUST_LOG
+              value: info
+          image: ghcr.io/kj800x/seeds-app:commit-$SHA
+          name: seeds-app
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /app/data
+              name: seeds-app-data
+          workingDir: /app
+      imagePullSecrets:
+        - name: ghcr-kj800x
+      volumes:
+        - name: seeds-app-data
+          nfs:
+            path: /data/services/seeds
+            server: 10.60.1.15
+      nodeSelector:
+        dedicated: nas

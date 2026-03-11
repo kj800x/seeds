@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  labels:
+    app.kubernetes.io/instance: seeds-app
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: seeds.home.coolkev.com
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+  name: seeds-app
+  namespace: kj800x
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: seeds.home.coolkev.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: seeds-app
+                port:
+                  number: 80
+            path: /
+            pathType: Prefix
