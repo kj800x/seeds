@@ -3,6 +3,6 @@ artifactRepo:
   repo: seeds-app
   branch: master
 
-team: cluster-infra
+team: kj800x
 kind: service
 namespace: kj800x
