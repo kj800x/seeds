@@ -22,7 +22,7 @@ spec:
           env:
             - name: RUST_LOG
               value: info
-          image: ghcr.io/kj800x/seeds-app:commit-$SHA
+          image: ghcr.io/kj800x/seeds:commit-$SHA
           name: seeds-app
           ports:
             - containerPort: 3000
