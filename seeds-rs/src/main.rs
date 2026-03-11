@@ -56,6 +56,8 @@ async fn main() {
         .route("/schedule/week", get(routes::schedule::this_week))
         .route("/plan/toggle/{seed_id}", post(routes::seeds::toggle_plan))
         .route("/plan/{seed_id}/start-method", post(routes::seeds::set_start_method))
+        .route("/settings", get(routes::settings::settings_page))
+        .route("/settings/reset-all-data", post(routes::settings::reset_all_data))
         .nest_service("/static", ServeDir::new("static"))
         .nest_service("/images", ServeDir::new("data/images"))
         .with_state(state);

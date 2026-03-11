@@ -1284,6 +1284,24 @@ a:hover {
 .schedule-tabs .tab.active { color: #3d8b3d; border-bottom-color: #3d8b3d; font-weight: 600; }
 .schedule-tabs .tab:hover { color: #3d8b3d; text-decoration: none; }
 
+/* Settings Page */
+.settings-danger-desc {
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+    margin-bottom: 16px;
+    line-height: 1.5;
+}
+
+.reset-success {
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: var(--color-sage-light);
+    border: 1px solid var(--color-sage);
+    border-radius: var(--radius-md);
+    color: var(--color-earth-green-dark);
+    font-weight: 500;
+}
+
 /* Print Stylesheet */
 @media print {
     .app-header, .nav, .btn-plan-toggle, .add-seed, .schedule-tabs,

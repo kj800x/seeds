@@ -33,6 +33,8 @@ pub fn layout_with_nav(title: &str, active_nav: &str, content: Markup) -> Markup
                             class=@if active == "seeds" { "active" } { "Seeds" }
                         a.nav-link href="/schedule"
                             class=@if active == "schedule" { "active" } { "Schedule" }
+                        a.nav-link href="/settings"
+                            class=@if active == "settings" { "active" } { "Settings" }
                     }
                 }
                 main.content {
