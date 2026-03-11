@@ -50,9 +50,11 @@ async fn main() {
                                                       .put(routes::seeds::update_purchase_handler))
         .route("/seeds/{id}/purchases/{purchase_id}/edit", get(routes::seeds::edit_purchase_form))
         .route("/seeds/add", post(routes::seeds::add_seed))
+        .route("/seeds/reparse", post(routes::seeds::reparse_all))
         .route("/schedule", get(routes::schedule::schedule_page))
         .route("/schedule/week", get(routes::schedule::this_week))
         .route("/plan/toggle/{seed_id}", post(routes::seeds::toggle_plan))
+        .route("/plan/{seed_id}/start-method", post(routes::seeds::set_start_method))
         .nest_service("/static", ServeDir::new("static"))
         .nest_service("/images", ServeDir::new("data/images"))
         .with_state(state);

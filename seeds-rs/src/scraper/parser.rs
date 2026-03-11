@@ -1,4 +1,4 @@
-use scraper::{Html, Selector};
+use scraper::{Element, Html, Selector};
 
 /// Structured data parsed from the Shopify product tags string.
 #[derive(Debug, Default)]
@@ -50,7 +50,7 @@ pub fn parse_tags(tags_str: &str) -> ParsedTags {
     result
 }
 
-/// Growing details extracted from the HTML product page.
+/// All growing/planting details extracted from the HTML product page.
 #[derive(Debug, Default)]
 pub struct GrowingDetails {
     pub days_to_maturity: Option<String>,
@@ -60,118 +60,100 @@ pub struct GrowingDetails {
     pub planting_instructions: Option<String>,
     pub growing_instructions: Option<String>,
     pub harvest_instructions: Option<String>,
+    // New expanded fields
+    pub plant_type: Option<String>,
+    pub botanical_name: Option<String>,
+    pub family: Option<String>,
+    pub native_region: Option<String>,
+    pub hardiness: Option<String>,
+    pub exposure: Option<String>,
+    pub bloom_period: Option<String>,
+    pub plant_dimensions: Option<String>,
+    pub variety_info: Option<String>,
+    pub attributes: Option<String>,
+    pub when_to_sow_outside: Option<String>,
+    pub when_to_start_inside: Option<String>,
+    pub days_to_emerge: Option<String>,
+    pub row_spacing: Option<String>,
+    pub thinning: Option<String>,
+    pub special_care: Option<String>,
 }
 
 /// Parse growing details from a Botanical Interests HTML product page.
 ///
-/// This uses a best-effort approach since the exact HTML structure is not fully known
-/// (Shopify metafields rendered via Liquid theme). The function attempts several
-/// strategies to extract growing information and gracefully returns None for any
-/// fields it cannot find.
+/// Botanical Interests consistently structures their product details as:
+///   `<p><b>Label:</b> Value text</p>`
+/// within the product description (body_html). We also extract the botanical
+/// name from `<em>` tags in the description.
 ///
-/// The raw HTML is stored in the database (SCRP-05) so parsing can be refined later.
+/// The raw HTML is stored in the database so parsing can be refined later.
 pub fn parse_growing_details(html: &str) -> GrowingDetails {
     let document = Html::parse_document(html);
     let mut details = GrowingDetails::default();
 
-    // Strategy 1: Look for common Shopify metafield patterns.
-    // Many Shopify themes render metafields inside elements with class names
-    // containing "product-details", "product__description", "metafield", or
-    // specific data attributes.
+    // Extract all <p><b>Label:</b> Value</p> pairs from the page.
+    let pairs = extract_bold_label_pairs(&document);
 
-    // Try to find days to maturity from text patterns in the page
-    details.days_to_maturity = extract_text_pattern(&document, &[
-        "days to maturity",
-        "days to harvest",
-        "maturity",
-    ]);
+    for (label, value) in &pairs {
+        let label_lower = label.to_lowercase();
+        let value = value.trim().to_string();
+        if value.is_empty() {
+            continue;
+        }
 
-    // Try to find sow depth
-    details.sow_depth = extract_text_pattern(&document, &[
-        "sow depth",
-        "planting depth",
-        "seed depth",
-    ]);
-
-    // Try to find plant spacing
-    details.plant_spacing = extract_text_pattern(&document, &[
-        "plant spacing",
-        "spacing",
-        "thin to",
-    ]);
-
-    // Try to find germination info
-    details.germination_info = extract_text_pattern(&document, &[
-        "germination",
-        "germinate",
-    ]);
-
-    // Strategy 2: Look for product description sections that contain planting/growing/harvest info.
-    // These are often in div.product-description, div.product__content, or the body_html rendered
-    // section of the Shopify theme.
-    let section_selectors = [
-        "div.product-single__description",
-        "div.product__description",
-        "div.product-description",
-        "div.rte",
-        "div[data-product-description]",
-        "#product-description",
-    ];
-
-    let mut description_text = String::new();
-    for sel_str in &section_selectors {
-        if let Ok(selector) = Selector::parse(sel_str) {
-            for element in document.select(&selector) {
-                let text = element.text().collect::<Vec<_>>().join(" ");
-                if text.len() > description_text.len() {
-                    description_text = text;
+        match label_lower.as_str() {
+            "days to maturity" => details.days_to_maturity = Some(value),
+            "seed depth" | "sow depth" | "planting depth" => details.sow_depth = Some(value),
+            "seed spacing" | "plant spacing" => details.plant_spacing = Some(value),
+            "days to emerge" | "days to germinate" | "germination" => {
+                details.days_to_emerge = Some(value.clone());
+                // Also populate germination_info for backward compat
+                details.germination_info = Some(value);
+            }
+            "type" => details.plant_type = Some(value.replace(" (Learn more)", "")),
+            "family" => details.family = Some(value),
+            "native" | "native region" => details.native_region = Some(value),
+            "hardiness" => details.hardiness = Some(value),
+            "exposure" => details.exposure = Some(value),
+            "bloom period" | "bloom season" => details.bloom_period = Some(value),
+            "plant dimensions" | "plant size" => details.plant_dimensions = Some(value),
+            "variety info" => details.variety_info = Some(value),
+            "attributes" => details.attributes = Some(value),
+            "when to sow outside" | "when to sow outdoors" => {
+                details.when_to_sow_outside = Some(value.clone());
+                // Include in planting_instructions as well
+                if details.planting_instructions.is_none() {
+                    details.planting_instructions = Some(format!("Sow Outside: {}", value));
+                } else if let Some(ref mut pi) = details.planting_instructions {
+                    pi.push_str(&format!(" Sow Outside: {}", value));
+                }
+            }
+            "when to start inside" | "when to start indoors" => {
+                details.when_to_start_inside = Some(value.clone());
+                if details.planting_instructions.is_none() {
+                    details.planting_instructions = Some(format!("Start Inside: {}", value));
+                } else if let Some(ref mut pi) = details.planting_instructions {
+                    pi.push_str(&format!(" Start Inside: {}", value));
+                }
+            }
+            "row spacing" => details.row_spacing = Some(value),
+            "thinning" => details.thinning = Some(value),
+            "harvesting" | "harvest" => details.harvest_instructions = Some(value),
+            "special care" => details.special_care = Some(value),
+            _ => {
+                // Capture any growing/cultivation info we haven't explicitly mapped
+                if label_lower.contains("growing") || label_lower.contains("cultivation")
+                    || label_lower.contains("care")
+                {
+                    details.growing_instructions = Some(value);
                 }
             }
         }
     }
 
-    // If we found a description block, try to extract sections from it
-    if !description_text.is_empty() {
-        details.planting_instructions =
-            extract_section_from_text(&description_text, &["planting", "sowing", "when to sow"]);
-        details.growing_instructions =
-            extract_section_from_text(&description_text, &["growing", "cultivation", "care"]);
-        details.harvest_instructions =
-            extract_section_from_text(&description_text, &["harvest", "picking", "when to pick"]);
-    }
-
-    // Strategy 3: Scan all text nodes in tab panels or accordion sections
-    let tab_selectors = [
-        "div.tabs__content",
-        "div.tab-content",
-        "div.accordion__content",
-        "div[role='tabpanel']",
-        "div.collapsible-content",
-    ];
-
-    for sel_str in &tab_selectors {
-        if let Ok(selector) = Selector::parse(sel_str) {
-            for element in document.select(&selector) {
-                let text = element.text().collect::<Vec<_>>().join(" ");
-                let text_lower = text.to_lowercase();
-
-                if details.planting_instructions.is_none()
-                    && (text_lower.contains("planting") || text_lower.contains("sowing"))
-                {
-                    details.planting_instructions = Some(clean_text(&text));
-                }
-                if details.growing_instructions.is_none()
-                    && (text_lower.contains("growing") || text_lower.contains("care"))
-                {
-                    details.growing_instructions = Some(clean_text(&text));
-                }
-                if details.harvest_instructions.is_none()
-                    && text_lower.contains("harvest")
-                {
-                    details.harvest_instructions = Some(clean_text(&text));
-                }
-            }
-        }
+    // Extract botanical name from <em> tags (e.g. <em>Allium schoenoprasum</em>)
+    if details.botanical_name.is_none() {
+        details.botanical_name = extract_botanical_name(&document);
     }
 
     if details.is_empty() {
@@ -181,75 +163,89 @@ pub fn parse_growing_details(html: &str) -> GrowingDetails {
     details
 }
 
-/// Search the parsed HTML document for text containing any of the given keywords,
-/// and extract the surrounding context as a value.
-fn extract_text_pattern(document: &Html, keywords: &[&str]) -> Option<String> {
-    // Look for elements that might contain the target info
-    let selectors_to_try = [
-        "li",
-        "p",
-        "td",
-        "span",
-        "div.metafield",
-        "div.product-detail",
-    ];
+/// Extract all `<p><b>Label:</b> Value</p>` pairs from the document.
+///
+/// This is the primary structured data pattern used by Botanical Interests.
+/// The bold tag contains the label followed by a colon, and the rest of the
+/// paragraph is the value.
+///
+/// We first try the more specific `div.tab-content p b` selector (matching
+/// the known Botanical Interests theme structure), then fall back to scanning
+/// all `<p>` tags if that yields no results.
+fn extract_bold_label_pairs(document: &Html) -> Vec<(String, String)> {
+    // Try the specific tab-content selector first (avoids review text)
+    let pairs = extract_bold_pairs_with_b_selector(document, "div.tab-content p b");
+    if !pairs.is_empty() {
+        return pairs;
+    }
 
-    for sel_str in &selectors_to_try {
-        if let Ok(selector) = Selector::parse(sel_str) {
-            for element in document.select(&selector) {
-                let text = element.text().collect::<Vec<_>>().join(" ");
-                let text_lower = text.to_lowercase();
+    // Fallback: scan all <p><b> pairs in the document
+    extract_bold_pairs_with_b_selector(document, "p b")
+}
 
-                for keyword in keywords {
-                    if text_lower.contains(keyword) {
-                        let cleaned = clean_text(&text);
-                        if !cleaned.is_empty() && cleaned.len() < 500 {
-                            return Some(cleaned);
-                        }
-                    }
+fn extract_bold_pairs_with_b_selector(document: &Html, selector_str: &str) -> Vec<(String, String)> {
+    let mut pairs = Vec::new();
+
+    let b_selector = Selector::parse(selector_str).expect("valid selector");
+
+    for b_elem in document.select(&b_selector) {
+        let bold_text: String = b_elem.text().collect::<Vec<_>>().join("");
+        // The label should end with ':'
+        if let Some(label) = bold_text.strip_suffix(':') {
+            let label = label.trim().to_string();
+            if label.is_empty() {
+                continue;
+            }
+
+            // Get the parent <p> element's full text, then strip the bold label prefix
+            if let Some(parent) = b_elem.parent_element() {
+                let full_text: String = parent.text().collect::<Vec<_>>().join("");
+                let value = full_text
+                    .replace(&bold_text, "")
+                    .trim()
+                    .to_string();
+
+                if !value.is_empty() {
+                    pairs.push((label, value));
                 }
             }
         }
     }
 
-    None
+    pairs
 }
 
-/// Extract a section of text from a larger block based on keyword proximity.
-fn extract_section_from_text(text: &str, keywords: &[&str]) -> Option<String> {
-    let text_lower = text.to_lowercase();
+/// Extract botanical name from <em> tags in the product description.
+///
+/// Botanical Interests renders the botanical/Latin name in italics, e.g.:
+///   `<em>Allium schoenoprasum</em>`
+///
+/// We look for <em> text that looks like a binomial name (two+ capitalized
+/// Latin words, possibly with variety/subspecies).
+fn extract_botanical_name(document: &Html) -> Option<String> {
+    let em_selector = Selector::parse("em").expect("valid selector");
 
-    for keyword in keywords {
-        if let Some(pos) = text_lower.find(keyword) {
-            // Extract a window around the keyword (up to ~500 chars after it)
-            let start = text[..pos]
-                .rfind(|c: char| c == '.' || c == '\n')
-                .map(|p| p + 1)
-                .unwrap_or(pos);
+    for em_elem in document.select(&em_selector) {
+        let text: String = em_elem.text().collect::<Vec<_>>().join("");
+        let text = text.trim();
 
-            let end_offset = (pos + 500).min(text.len());
-            let end = text[pos..end_offset]
-                .rfind(|c: char| c == '.' || c == '\n')
-                .map(|p| pos + p + 1)
-                .unwrap_or(end_offset);
-
-            let section = clean_text(&text[start..end]);
-            if !section.is_empty() {
-                return Some(section);
+        // Simple heuristic: looks like a Latin binomial name if it has 2+ words,
+        // starts with a capital letter, and the words are mostly alphabetic.
+        let words: Vec<&str> = text.split_whitespace().collect();
+        if words.len() >= 2 {
+            let first_char = words[0].chars().next().unwrap_or(' ');
+            if first_char.is_uppercase()
+                && words.iter().all(|w| {
+                    w.chars()
+                        .all(|c| c.is_alphabetic() || c == '.' || c == '-' || c == '\'')
+                })
+            {
+                return Some(text.to_string());
             }
         }
     }
 
     None
-}
-
-/// Clean up extracted text: normalize whitespace, trim.
-fn clean_text(text: &str) -> String {
-    text.split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
-        .trim()
-        .to_string()
 }
 
 impl GrowingDetails {
@@ -262,6 +258,22 @@ impl GrowingDetails {
             && self.planting_instructions.is_none()
             && self.growing_instructions.is_none()
             && self.harvest_instructions.is_none()
+            && self.plant_type.is_none()
+            && self.botanical_name.is_none()
+            && self.family.is_none()
+            && self.native_region.is_none()
+            && self.hardiness.is_none()
+            && self.exposure.is_none()
+            && self.bloom_period.is_none()
+            && self.plant_dimensions.is_none()
+            && self.variety_info.is_none()
+            && self.attributes.is_none()
+            && self.when_to_sow_outside.is_none()
+            && self.when_to_start_inside.is_none()
+            && self.days_to_emerge.is_none()
+            && self.row_spacing.is_none()
+            && self.thinning.is_none()
+            && self.special_care.is_none()
     }
 }
 
@@ -315,7 +327,81 @@ mod tests {
     }
 
     #[test]
-    fn test_clean_text() {
-        assert_eq!(clean_text("  hello   world  "), "hello world");
+    fn test_parse_bold_label_pairs() {
+        let html = r#"<html><body>
+            <p><b>Family:</b> Solanaceae</p>
+            <p><b>Days to Maturity:</b> 75-80 days from transplanting</p>
+            <p><b>Seed Depth:</b> 1/4"</p>
+            <p><b>Harvesting:</b> Pick when ripe.</p>
+            <p>This is a normal paragraph without bold labels.</p>
+        </body></html>"#;
+
+        let details = parse_growing_details(html);
+        assert_eq!(details.family, Some("Solanaceae".to_string()));
+        assert_eq!(
+            details.days_to_maturity,
+            Some("75-80 days from transplanting".to_string())
+        );
+        assert_eq!(details.sow_depth, Some("1/4\"".to_string()));
+        assert_eq!(details.harvest_instructions, Some("Pick when ripe.".to_string()));
+    }
+
+    #[test]
+    fn test_parse_days_to_emerge() {
+        let html = r#"<html><body>
+            <p><b>Days to Emerge:</b> 10-15 days</p>
+        </body></html>"#;
+
+        let details = parse_growing_details(html);
+        assert_eq!(details.days_to_emerge, Some("10-15 days".to_string()));
+        assert_eq!(details.germination_info, Some("10-15 days".to_string()));
+    }
+
+    #[test]
+    fn test_parse_botanical_name() {
+        let html = r#"<html><body>
+            <em>Allium schoenoprasum</em>
+            <p><b>Family:</b> Alliaceae</p>
+        </body></html>"#;
+
+        let details = parse_growing_details(html);
+        assert_eq!(
+            details.botanical_name,
+            Some("Allium schoenoprasum".to_string())
+        );
+    }
+
+    #[test]
+    fn test_ignores_non_botanical_em() {
+        let html = r#"<html><body>
+            <em>recommended</em>
+            <p><b>Family:</b> Test</p>
+        </body></html>"#;
+
+        let details = parse_growing_details(html);
+        // Single word "recommended" should not match as botanical name
+        assert!(details.botanical_name.is_none());
+    }
+
+    #[test]
+    fn test_parse_planting_instructions_combined() {
+        let html = r#"<html><body>
+            <p><b>When to Sow Outside:</b> 4 to 6 weeks before last frost</p>
+            <p><b>When to Start Inside:</b> 6 to 8 weeks before last frost</p>
+        </body></html>"#;
+
+        let details = parse_growing_details(html);
+        assert_eq!(
+            details.when_to_sow_outside,
+            Some("4 to 6 weeks before last frost".to_string())
+        );
+        assert_eq!(
+            details.when_to_start_inside,
+            Some("6 to 8 weeks before last frost".to_string())
+        );
+        // planting_instructions should combine both
+        let pi = details.planting_instructions.unwrap();
+        assert!(pi.contains("Sow Outside:"));
+        assert!(pi.contains("Start Inside:"));
     }
 }

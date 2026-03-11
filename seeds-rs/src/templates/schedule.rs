@@ -1,19 +1,19 @@
-use std::collections::HashMap;
-
-use chrono::{Datelike, Local, NaiveDate};
+use chrono::{Local, NaiveDate};
 use maud::{html, Markup};
 
 use crate::db::models::Seed;
-use crate::schedule::{ActionType, PlantingAction, PlantingTiming};
+use crate::schedule::{ActionType, PlantingAction, PlantingTiming, compute_seed_timeline, compute_indoor_timeline, compute_outdoor_timeline, compute_timeline_for_method, StartMethod, SeedTimeline};
+use crate::schedule::calculator::{PhaseType, last_frost_date};
+use super::home::plan_toggle_button;
 use super::layout::layout_with_nav;
 
-/// Timeline spans March 1 through September 30.
+/// Timeline spans March 1 through October 31.
 fn timeline_start(year: i32) -> NaiveDate {
     NaiveDate::from_ymd_opt(year, 3, 1).unwrap()
 }
 
 fn timeline_end(year: i32) -> NaiveDate {
-    NaiveDate::from_ymd_opt(year, 9, 30).unwrap()
+    NaiveDate::from_ymd_opt(year, 10, 31).unwrap()
 }
 
 /// Convert a date to a percentage position within the timeline.
@@ -41,6 +41,28 @@ fn action_type_label(action_type: &ActionType) -> &'static str {
     }
 }
 
+fn phase_type_css_class(phase_type: &PhaseType) -> &'static str {
+    match phase_type {
+        PhaseType::PlantingWindow => "phase-planting-window",
+        PhaseType::IndoorSowing => "phase-indoor-sow",
+        PhaseType::IndoorGrowing => "phase-indoor",
+        PhaseType::TransplantWindow => "phase-transplant",
+        PhaseType::OutdoorGrowing => "phase-outdoor",
+        PhaseType::Harvest => "phase-harvest",
+    }
+}
+
+fn phase_type_label(phase_type: &PhaseType) -> &'static str {
+    match phase_type {
+        PhaseType::PlantingWindow => "Outdoor sowing",
+        PhaseType::IndoorSowing => "Seeding",
+        PhaseType::IndoorGrowing => "Indoor growth",
+        PhaseType::TransplantWindow => "Transplant",
+        PhaseType::OutdoorGrowing => "Outdoor growth",
+        PhaseType::Harvest => "Harvest",
+    }
+}
+
 /// Format a date as "Mon DD" (e.g., "Mar 29").
 fn format_date(date: &NaiveDate) -> String {
     date.format("%b %e").to_string()
@@ -50,7 +72,7 @@ fn format_date(date: &NaiveDate) -> String {
 pub fn schedule_page_template(
     actions: &[PlantingAction],
     manual_seeds: &[&Seed],
-    seeds_with_timing: &[(Seed, PlantingTiming)],
+    seeds_with_timing: &[(Seed, PlantingTiming, Option<StartMethod>)],
     year: i32,
 ) -> Markup {
     let content = html! {
@@ -92,7 +114,8 @@ pub fn schedule_page_template(
             @if !seeds_with_timing.is_empty() {
                 section.schedule-section {
                     h2 { "Season Timeline" }
-                    (render_timeline(actions, seeds_with_timing, year))
+                    (render_timeline_legend())
+                    (render_timeline(seeds_with_timing, year))
                 }
             }
         }
@@ -195,19 +218,52 @@ fn render_manual_review(manual_seeds: &[&Seed]) -> Markup {
     }
 }
 
-/// Render the CSS Grid timeline.
+/// Render the timeline legend.
+fn render_timeline_legend() -> Markup {
+    html! {
+        div.timeline-legend {
+            span.legend-item {
+                span.legend-swatch.phase-indoor-sow {}
+                "Seeding"
+            }
+            span.legend-item {
+                span.legend-swatch.phase-indoor {}
+                "Indoor growth"
+            }
+            span.legend-item {
+                span.legend-swatch.phase-planting-window {}
+                "Outdoor sow"
+            }
+            span.legend-item {
+                span.legend-swatch.phase-transplant {}
+                "Transplant"
+            }
+            span.legend-item {
+                span.legend-swatch.phase-outdoor {}
+                "Outdoor growth"
+            }
+            span.legend-item {
+                span.legend-swatch.phase-harvest {}
+                "Harvest"
+            }
+            span.legend-item {
+                span.legend-swatch.legend-frost {}
+                "Last frost"
+            }
+            span.legend-item {
+                span.legend-swatch.legend-today {}
+                "Today"
+            }
+        }
+    }
+}
+
+/// Render the phase-based timeline.
 fn render_timeline(
-    actions: &[PlantingAction],
-    seeds_with_timing: &[(Seed, PlantingTiming)],
+    seeds_with_timing: &[(Seed, PlantingTiming, Option<StartMethod>)],
     year: i32,
 ) -> Markup {
-    let months = ["Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep"];
-
-    // Group actions by seed_id for timeline bars
-    let mut seed_actions: HashMap<i64, Vec<&PlantingAction>> = HashMap::new();
-    for action in actions {
-        seed_actions.entry(action.seed_id).or_default().push(action);
-    }
+    let months = ["Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
 
     // Today line position
     let today = Local::now().date_naive();
@@ -215,6 +271,10 @@ fn render_timeline(
     let t_end = timeline_end(year);
     let show_today = today >= t_start && today <= t_end;
     let today_pct = if show_today { date_to_percent(today, year) } else { 0.0 };
+
+    // Last frost line
+    let frost = last_frost_date(year);
+    let frost_pct = date_to_percent(frost, year);
 
     html! {
         div.timeline {
@@ -227,28 +287,37 @@ fn render_timeline(
             }
 
             // One row per seed
-            @for (seed, _timing) in seeds_with_timing {
+            @for (seed, timing, method) in seeds_with_timing {
+                @let timeline = if let Some(m) = method {
+                    compute_timeline_for_method(seed, timing, year, *m)
+                } else {
+                    compute_seed_timeline(seed, timing, year)
+                };
                 div.timeline-row {
-                    div.timeline-seed-name { (seed.title) }
+                    div.timeline-seed-name {
+                        a href=(format!("/seeds/{}", seed.id)) { (seed.title) }
+                    }
                     div.timeline-bars {
-                        @if let Some(seed_acts) = seed_actions.get(&seed.id) {
-                            @for action in seed_acts {
-                                @let left = date_to_percent(action.date, year);
-                                // Each action bar is a point marker with small width
-                                @let bar_class = format!("timeline-bar {}", action_type_css_class(&action.action_type));
-                                div class=(bar_class)
-                                    style=(format!("left: {:.1}%; width: 8px;", left))
-                                    title=(format!("{}: {} - {}", action_type_label(&action.action_type), format_date(&action.date), action.seed_title)) {}
-                            }
-                            // If seed has both indoor start and transplant/sow, draw a connecting bar
-                            (render_period_bars(seed_acts, year))
-                        } @else {
-                            // No parseable timing -- show gray "?" bar
-                            div.timeline-bar.manual style="left: 0%; width: 100%;"
+                        // Render phase bars
+                        @for phase in &timeline.phases {
+                            @let left = date_to_percent(phase.start, year);
+                            @let right = date_to_percent(phase.end, year);
+                            @let width = (right - left).max(0.5);
+                            div class=(format!("timeline-phase {}", phase_type_css_class(&phase.phase_type)))
+                                style=(format!("left: {:.1}%; width: {:.1}%;", left, width))
+                                title=(format!("{}: {} - {}", phase_type_label(&phase.phase_type), format_date(&phase.start), format_date(&phase.end))) {}
+                        }
+
+                        // If no phases, show gray "?" bar
+                        @if timeline.phases.is_empty() {
+                            div.timeline-phase.phase-manual style="left: 0%; width: 100%;"
                                 title="See packet instructions" {
                                 span.timeline-bar-label { "?" }
                             }
                         }
+
+                        // Last frost marker
+                        div.timeline-frost style=(format!("left: {:.1}%;", frost_pct)) {}
 
                         // Today marker
                         @if show_today {
@@ -261,50 +330,184 @@ fn render_timeline(
     }
 }
 
-/// Render period bars connecting related actions for a seed (e.g., indoor start to transplant).
-fn render_period_bars(actions: &[&PlantingAction], year: i32) -> Markup {
-    // Find indoor start and transplant/sow dates to draw period bars
-    let indoor = actions.iter().find(|a| a.action_type == ActionType::StartIndoors);
-    let transplant = actions.iter().find(|a| a.action_type == ActionType::TransplantOutdoors);
-    let direct_sow = actions.iter().find(|a| a.action_type == ActionType::DirectSow);
+/// Render a mini timeline for the seed detail page.
+pub fn seed_detail_timeline(seed: &Seed, timing: &PlantingTiming, year: i32, in_plan: bool) -> Markup {
+    let timeline = compute_seed_timeline(seed, timing, year);
+
+    if timeline.phases.is_empty() {
+        return html! {
+            section #timeline-section .detail-section {
+                h2 { "Plan " (year) }
+                (render_plan_controls(seed, in_plan, false, false, None))
+            }
+        };
+    }
 
     html! {
-        // Indoor period: from start indoors to transplant date
-        @if let (Some(start), Some(end)) = (indoor, transplant) {
-            @let left = date_to_percent(start.date, year);
-            @let right = date_to_percent(end.date, year);
-            @let width = right - left;
-            @if width > 0.0 {
-                div.timeline-bar.start-indoors.period-bar
-                    style=(format!("left: {:.1}%; width: {:.1}%;", left, width))
-                    title=(format!("Indoor period: {} to {}", format_date(&start.date), format_date(&end.date))) {}
+        section #timeline-section .detail-section {
+            h2 { "Timeline " (year) }
+            (render_timeline_legend())
+            (render_single_timeline(&timeline, year))
+            (render_key_dates(&timeline, year))
+            (render_plan_controls(seed, in_plan, false, false, None))
+        }
+    }
+}
+
+/// Render separate indoor and outdoor timelines on the seed detail page,
+/// with a "Recommended" badge on the appropriate one.
+pub fn seed_detail_dual_timeline(seed: &Seed, timing: &PlantingTiming, year: i32, in_plan: bool, plan_start_method: Option<&str>) -> Markup {
+    let indoor = compute_indoor_timeline(seed, timing, year);
+    let outdoor = compute_outdoor_timeline(seed, timing, year);
+
+    if indoor.is_none() && outdoor.is_none() {
+        return html! {
+            section #timeline-section .detail-section {
+                h2 { "Plan " (year) }
+                (render_plan_controls(seed, in_plan, false, false, None))
+            }
+        };
+    }
+
+    let has_indoor = indoor.is_some();
+    let has_outdoor = outdoor.is_some();
+
+    html! {
+        section #timeline-section .detail-section {
+            h2 { "Timeline " (year) }
+            (render_timeline_legend())
+
+            @if let Some(ref indoor_tl) = indoor {
+                div.timeline-method-section {
+                    div.timeline-method-header {
+                        h3 { "Start Indoors" }
+                        @if timing.indoor_start_recommended {
+                            span.badge.badge-recommended { "Recommended" }
+                        }
+                    }
+                    (render_single_timeline(indoor_tl, year))
+                    (render_key_dates(indoor_tl, year))
+                }
+            }
+
+            @if let Some(ref outdoor_tl) = outdoor {
+                div.timeline-method-section {
+                    div.timeline-method-header {
+                        h3 { "Start Outdoors" }
+                        @if !timing.indoor_start_recommended {
+                            span.badge.badge-recommended { "Recommended" }
+                        }
+                    }
+                    (render_single_timeline(outdoor_tl, year))
+                    (render_key_dates(outdoor_tl, year))
+                }
+            }
+
+            (render_plan_controls(seed, in_plan, has_indoor, has_outdoor, plan_start_method))
+        }
+    }
+}
+
+/// Render plan controls: add-to-plan toggle and optional start method selector.
+fn render_plan_controls(seed: &Seed, in_plan: bool, has_indoor: bool, has_outdoor: bool, plan_start_method: Option<&str>) -> Markup {
+    let label = if in_plan { "In Plan" } else { "Add to Plan" };
+    let class = if in_plan { "btn-plan-toggle active" } else { "btn-plan-toggle" };
+    let show_method_selector = in_plan && has_indoor && has_outdoor;
+    html! {
+        div.plan-controls {
+            button class=(class)
+                   hx-post=(format!("/plan/toggle/{}?detail=1", seed.id))
+                   hx-target="#timeline-section"
+                   hx-swap="outerHTML"
+            {
+                (label)
+            }
+            @if show_method_selector {
+                @if let Some(current_method) = plan_start_method {
+                    div.start-method-selector {
+                        span.start-method-label { "Start method:" }
+                        button class=(if current_method == "indoor" { "btn btn-sm btn-method active" } else { "btn btn-sm btn-method" })
+                               hx-post=(format!("/plan/{}/start-method", seed.id))
+                               hx-vals=(r#"{"method": "indoor"}"#)
+                               hx-target="#timeline-section"
+                               hx-swap="outerHTML" {
+                            "Indoors"
+                        }
+                        button class=(if current_method == "outdoor" { "btn btn-sm btn-method active" } else { "btn btn-sm btn-method" })
+                               hx-post=(format!("/plan/{}/start-method", seed.id))
+                               hx-vals=(r#"{"method": "outdoor"}"#)
+                               hx-target="#timeline-section"
+                               hx-swap="outerHTML" {
+                            "Outdoors"
+                        }
+                    }
+                }
             }
         }
+    }
+}
 
-        // Outdoor period: from transplant to ~8 weeks after (approximate growing season)
-        @if let Some(tp) = transplant {
-            @let left = date_to_percent(tp.date, year);
-            // Show a green bar from transplant extending ~6 weeks
-            @let end_date = tp.date + chrono::Duration::weeks(6);
-            @let right = date_to_percent(end_date, year);
-            @let width = right - left;
-            @if width > 0.0 {
-                div.timeline-bar.transplant.period-bar
-                    style=(format!("left: {:.1}%; width: {:.1}%;", left, width))
-                    title=(format!("Outdoor growing from {}", format_date(&tp.date))) {}
+/// Render a single timeline bar (reusable for both combined and split views).
+fn render_single_timeline(timeline: &SeedTimeline, year: i32) -> Markup {
+    let months = ["Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
+
+    let today = Local::now().date_naive();
+    let t_start = timeline_start(year);
+    let t_end = timeline_end(year);
+    let show_today = today >= t_start && today <= t_end;
+    let today_pct = if show_today { date_to_percent(today, year) } else { 0.0 };
+
+    let frost = last_frost_date(year);
+    let frost_pct = date_to_percent(frost, year);
+
+    html! {
+        div.timeline.timeline-single {
+            div.timeline-seed-name {}
+            div.timeline-header {
+                @for m in &months {
+                    span { (m) }
+                }
+            }
+
+            div.timeline-row {
+                div.timeline-seed-name {}
+                div.timeline-bars {
+                    @for phase in &timeline.phases {
+                        @let left = date_to_percent(phase.start, year);
+                        @let right = date_to_percent(phase.end, year);
+                        @let width = (right - left).max(0.5);
+                        div class=(format!("timeline-phase {}", phase_type_css_class(&phase.phase_type)))
+                            style=(format!("left: {:.1}%; width: {:.1}%;", left, width))
+                            title=(format!("{}: {} - {}", phase_type_label(&phase.phase_type), format_date(&phase.start), format_date(&phase.end))) {}
+                    }
+
+                    // Last frost marker
+                    div.timeline-frost style=(format!("left: {:.1}%;", frost_pct)) {}
+
+                    // Today marker
+                    @if show_today {
+                        div.timeline-today style=(format!("left: {:.1}%;", today_pct)) {}
+                    }
+                }
             }
         }
+    }
+}
 
-        // Direct sow period
-        @if let Some(ds) = direct_sow {
-            @let left = date_to_percent(ds.date, year);
-            @let end_date = ds.date + chrono::Duration::weeks(6);
-            @let right = date_to_percent(end_date, year);
-            @let width = right - left;
-            @if width > 0.0 {
-                div.timeline-bar.direct-sow.period-bar
-                    style=(format!("left: {:.1}%; width: {:.1}%;", left, width))
-                    title=(format!("Direct sow growing from {}", format_date(&ds.date))) {}
+/// Render the key dates list for a timeline.
+fn render_key_dates(timeline: &SeedTimeline, year: i32) -> Markup {
+    let frost = last_frost_date(year);
+
+    html! {
+        div.key-dates {
+            h3 { "Key Dates" }
+            dl.info-list {
+                @for action in &timeline.actions {
+                    dt { (action_type_label(&action.action_type)) }
+                    dd { (format_date(&action.date)) " (" (action.notes) ")" }
+                }
+                dt { "Last Frost" }
+                dd { (format_date(&frost)) }
             }
         }
     }

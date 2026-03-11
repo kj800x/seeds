@@ -1,8 +1,12 @@
+use chrono::Datelike;
 use maud::{html, Markup, PreEscaped};
 
 use crate::db::models::{Seed, SeedImage, SeedPurchase};
+use crate::schedule::{parse_planting_timing_from_fields, compute_indoor_timeline, compute_outdoor_timeline};
 use crate::viability::estimate_viability;
+use super::home::plan_toggle_button;
 use super::layout::layout;
+use super::schedule::{seed_detail_timeline, seed_detail_dual_timeline};
 
 /// Render the seed purchases section with viability per purchase.
 /// Used by both the full page template and the HTMX fragment handlers.
@@ -72,7 +76,7 @@ pub fn seed_purchases_section(seed: &Seed, purchases: &[SeedPurchase]) -> Markup
                      hx-target="#seed-purchases"
                      hx-swap="outerHTML" {
                     div.add-purchase-fields {
-                        input type="number" name="purchase_year" placeholder="Year (e.g. 2025)"
+                        input type="number" name="purchase_year" placeholder="Year"
                               min="2000" max="2030" required class="purchase-year-input";
                         input type="text" name="notes" placeholder="Notes (optional)"
                               class="purchase-notes-input";
@@ -84,8 +88,27 @@ pub fn seed_purchases_section(seed: &Seed, purchases: &[SeedPurchase]) -> Markup
     }
 }
 
-pub fn seed_detail_page(seed: &Seed, images: &[SeedImage], purchases: &[SeedPurchase]) -> Markup {
+/// Helper to render a definition list item if the value is Some.
+fn detail_item(label: &str, value: &Option<String>) -> Markup {
+    html! {
+        @if let Some(v) = value {
+            dt { (label) }
+            dd { (v) }
+        }
+    }
+}
+
+pub fn seed_detail_page(seed: &Seed, images: &[SeedImage], purchases: &[SeedPurchase], in_plan: bool, plan_start_method: Option<&str>) -> Markup {
     let hero_image = images.iter().find(|img| img.position == 1);
+    let current_year = chrono::Local::now().year() as i32;
+    let timing = parse_planting_timing_from_fields(
+        seed.when_to_sow_outside.as_deref(),
+        seed.when_to_start_inside.as_deref(),
+    );
+
+    let indoor_timeline = compute_indoor_timeline(seed, &timing, current_year);
+    let outdoor_timeline = compute_outdoor_timeline(seed, &timing, current_year);
+    let has_both = indoor_timeline.is_some() && outdoor_timeline.is_some();
 
     let content = html! {
         div.seed-detail {
@@ -100,6 +123,11 @@ pub fn seed_detail_page(seed: &Seed, images: &[SeedImage], purchases: &[SeedPurc
 
             h1.seed-title { (seed.title) }
 
+            // Botanical name in italics below title
+            @if let Some(ref name) = seed.botanical_name {
+                p.botanical-name { em { (name) } }
+            }
+
             div.seed-badges {
                 @if seed.is_organic {
                     span.badge.badge-organic { "Organic" }
@@ -107,6 +135,18 @@ pub fn seed_detail_page(seed: &Seed, images: &[SeedImage], purchases: &[SeedPurc
                 @if seed.is_heirloom {
                     span.badge.badge-heirloom { "Heirloom" }
                 }
+            }
+
+            // Source link
+            a.source-link href=(&seed.source_url) target="_blank" rel="noopener" {
+                "View on Botanical Interests \u{2197}"
+            }
+
+            // Timeline section - show separate indoor/outdoor if both available
+            @if has_both {
+                (seed_detail_dual_timeline(seed, &timing, current_year, in_plan, plan_start_method))
+            } @else {
+                (seed_detail_timeline(seed, &timing, current_year, in_plan))
             }
 
             // Purchase history & viability section
@@ -132,48 +172,55 @@ pub fn seed_detail_page(seed: &Seed, images: &[SeedImage], purchases: &[SeedPurc
                 }
             }
 
-            // Growing Info section
-            @if seed.days_to_maturity.is_some() || seed.light_requirement.is_some() || seed.frost_tolerance.is_some() {
+            // Plant Info section (identity/characteristics)
+            @if seed.family.is_some() || seed.plant_type.is_some() || seed.hardiness.is_some()
+                || seed.exposure.is_some() || seed.plant_dimensions.is_some()
+                || seed.native_region.is_some() || seed.bloom_period.is_some()
+                || seed.days_to_maturity.is_some() || seed.light_requirement.is_some()
+                || seed.frost_tolerance.is_some() {
                 section.detail-section {
-                    h2 { "Growing Info" }
+                    h2 { "Plant Info" }
                     dl.info-list {
-                        @if let Some(ref dtm) = seed.days_to_maturity {
-                            dt { "Days to Maturity" }
-                            dd { (dtm) }
-                        }
-                        @if let Some(ref light) = seed.light_requirement {
-                            dt { "Light" }
-                            dd { (light) }
-                        }
-                        @if let Some(ref frost) = seed.frost_tolerance {
-                            dt { "Frost Tolerance" }
-                            dd { (frost) }
-                        }
+                        (detail_item("Days to Maturity", &seed.days_to_maturity))
+                        (detail_item("Family", &seed.family))
+                        (detail_item("Type", &seed.plant_type))
+                        (detail_item("Hardiness", &seed.hardiness))
+                        (detail_item("Light", &seed.light_requirement))
+                        (detail_item("Exposure", &seed.exposure))
+                        (detail_item("Frost Tolerance", &seed.frost_tolerance))
+                        (detail_item("Plant Dimensions", &seed.plant_dimensions))
+                        (detail_item("Bloom Period", &seed.bloom_period))
+                        (detail_item("Native", &seed.native_region))
+                        (detail_item("Attributes", &seed.attributes))
                     }
                 }
             }
 
-            // Planting section
-            @if seed.sow_depth.is_some() || seed.plant_spacing.is_some() || seed.germination_info.is_some() || seed.planting_instructions.is_some() {
+            // Variety Info section
+            @if seed.variety_info.is_some() {
                 section.detail-section {
-                    h2 { "Planting" }
+                    h2 { "Variety Info" }
+                    @if let Some(ref info) = seed.variety_info {
+                        p { (info) }
+                    }
+                }
+            }
+
+            // Sowing & Planting section
+            @if seed.when_to_sow_outside.is_some() || seed.when_to_start_inside.is_some()
+                || seed.sow_depth.is_some() || seed.plant_spacing.is_some()
+                || seed.row_spacing.is_some() || seed.thinning.is_some()
+                || seed.days_to_emerge.is_some() || seed.germination_info.is_some() {
+                section.detail-section {
+                    h2 { "Sowing & Planting" }
                     dl.info-list {
-                        @if let Some(ref depth) = seed.sow_depth {
-                            dt { "Sow Depth" }
-                            dd { (depth) }
-                        }
-                        @if let Some(ref spacing) = seed.plant_spacing {
-                            dt { "Plant Spacing" }
-                            dd { (spacing) }
-                        }
-                        @if let Some(ref germ) = seed.germination_info {
-                            dt { "Germination" }
-                            dd { (germ) }
-                        }
-                        @if let Some(ref planting) = seed.planting_instructions {
-                            dt { "Instructions" }
-                            dd { (planting) }
-                        }
+                        (detail_item("When to Start Inside", &seed.when_to_start_inside))
+                        (detail_item("When to Sow Outside", &seed.when_to_sow_outside))
+                        (detail_item("Days to Emerge", &seed.days_to_emerge))
+                        (detail_item("Seed Depth", &seed.sow_depth))
+                        (detail_item("Seed Spacing", &seed.plant_spacing))
+                        (detail_item("Row Spacing", &seed.row_spacing))
+                        (detail_item("Thinning", &seed.thinning))
                     }
                 }
             }
@@ -184,6 +231,16 @@ pub fn seed_detail_page(seed: &Seed, images: &[SeedImage], purchases: &[SeedPurc
                     h2 { "Harvest" }
                     @if let Some(ref harvest) = seed.harvest_instructions {
                         p { (harvest) }
+                    }
+                }
+            }
+
+            // Special Care section
+            @if seed.special_care.is_some() {
+                section.detail-section {
+                    h2 { "Special Care" }
+                    @if let Some(ref care) = seed.special_care {
+                        p { (care) }
                     }
                 }
             }
@@ -205,33 +262,6 @@ pub fn seed_detail_page(seed: &Seed, images: &[SeedImage], purchases: &[SeedPurc
                     @if let Some(ref desc) = seed.description {
                         div.seed-description {
                             (PreEscaped(desc))
-                        }
-                    }
-                }
-            }
-
-            // Collapsible original scraped text
-            @if seed.growing_instructions.is_some() || seed.planting_instructions.is_some() || seed.harvest_instructions.is_some() {
-                details.original-text {
-                    summary { "Original Scraped Text" }
-                    div.original-text-content {
-                        @if let Some(ref growing) = seed.growing_instructions {
-                            div.text-block {
-                                h3 { "Growing Instructions" }
-                                p { (growing) }
-                            }
-                        }
-                        @if let Some(ref planting) = seed.planting_instructions {
-                            div.text-block {
-                                h3 { "Planting Instructions" }
-                                p { (planting) }
-                            }
-                        }
-                        @if let Some(ref harvest) = seed.harvest_instructions {
-                            div.text-block {
-                                h3 { "Harvest Instructions" }
-                                p { (harvest) }
-                            }
                         }
                     }
                 }

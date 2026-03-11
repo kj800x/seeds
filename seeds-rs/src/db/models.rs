@@ -29,6 +29,23 @@ pub struct Seed {
     pub purchase_year: Option<i64>,
     pub notes: Option<String>,
     pub created_at: Option<String>,
+    // Expanded growing details (migration 005)
+    pub plant_type: Option<String>,
+    pub botanical_name: Option<String>,
+    pub family: Option<String>,
+    pub native_region: Option<String>,
+    pub hardiness: Option<String>,
+    pub exposure: Option<String>,
+    pub bloom_period: Option<String>,
+    pub plant_dimensions: Option<String>,
+    pub variety_info: Option<String>,
+    pub attributes: Option<String>,
+    pub when_to_sow_outside: Option<String>,
+    pub when_to_start_inside: Option<String>,
+    pub days_to_emerge: Option<String>,
+    pub row_spacing: Option<String>,
+    pub thinning: Option<String>,
+    pub special_care: Option<String>,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -60,6 +77,8 @@ pub struct SeasonPlan {
     pub year: i64,
     pub notes: Option<String>,
     pub created_at: Option<String>,
+    /// 'indoor', 'outdoor', or NULL (not yet chosen / use recommended)
+    pub start_method: Option<String>,
 }
 
 #[derive(Debug, Clone)]

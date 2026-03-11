@@ -31,7 +31,7 @@
         "Helvetica Neue", Arial, sans-serif;
     --font-mono: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
 
-    --content-max-width: 900px;
+    --content-max-width: 960px;
     --header-height: 64px;
 }
 
@@ -284,7 +284,8 @@ a:hover {
 }
 
 .seed-row {
-    display: block;
+    display: flex;
+    align-items: center;
     padding: 14px 24px;
     border-top: 1px solid var(--color-cream-dark);
     color: var(--color-text);
@@ -299,6 +300,11 @@ a:hover {
 .seed-row:hover {
     background-color: var(--color-cream);
     text-decoration: none;
+}
+
+.seed-row-main {
+    flex: 1;
+    min-width: 0;
 }
 
 .seed-row-title {
@@ -318,19 +324,12 @@ a:hover {
 
 /* Season Plan Toggle */
 .seed-item {
-    display: flex;
-    align-items: center;
-}
-
-.seed-item .seed-row {
-    flex: 1;
-    min-width: 0;
+    list-style: none;
 }
 
 .btn-plan-toggle {
     flex-shrink: 0;
     padding: 4px 12px;
-    margin-right: 12px;
     font-size: 0.78rem;
     font-family: var(--font-stack);
     border: 1px solid var(--color-border);
@@ -356,6 +355,29 @@ a:hover {
 
 .btn-plan-toggle.active:hover {
     background: var(--color-earth-green-dark);
+}
+
+/* Plan controls at bottom of timeline card */
+.plan-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 1rem;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-cream-dark);
+}
+
+.plan-controls .btn-plan-toggle {
+    padding: 6px 16px;
+    font-size: 0.85rem;
+}
+
+.plan-controls .start-method-selector {
+    margin-top: 0;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 0;
 }
 
 /* Viability Color Tiers */
@@ -420,7 +442,7 @@ a:hover {
 
 /* Seed Detail Page */
 .seed-detail {
-    max-width: 720px;
+    max-width: 780px;
     margin: 0 auto;
 }
 
@@ -557,7 +579,6 @@ a:hover {
     background-color: var(--color-cream-dark);
     color: var(--color-text);
     border: 1px solid var(--color-border);
-    margin-top: 12px;
 }
 
 .btn-edit:hover {
@@ -645,7 +666,7 @@ a:hover {
 .purchases-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 16px;
+    margin-bottom: 0;
     font-size: 0.95rem;
 }
 
@@ -680,9 +701,8 @@ a:hover {
 
 /* Add Purchase Form */
 .add-purchase-form {
-    margin-top: 12px;
+    margin-top: 0;
     padding-top: 12px;
-    border-top: 1px solid var(--color-cream-dark);
 }
 
 .add-purchase-fields {
@@ -690,6 +710,16 @@ a:hover {
     gap: 8px;
     align-items: center;
     flex-wrap: wrap;
+}
+
+.add-purchase-fields .purchase-year-input {
+    padding: 6px 10px;
+    font-size: 0.9rem;
+    max-width: 100px;
+}
+
+.add-purchase-fields .btn-sm {
+    padding: 6px 10px;
 }
 
 .purchase-notes-input {
@@ -910,7 +940,7 @@ a:hover {
 
 .timeline-header {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(8, 1fr);
 }
 
 .timeline-header span {
@@ -947,36 +977,53 @@ a:hover {
     border-radius: var(--radius-sm);
 }
 
+/* Phase-based timeline bars */
+.timeline-phase {
+    position: absolute;
+    height: 80%;
+    top: 10%;
+    border-radius: var(--radius-sm);
+    opacity: 0.8;
+}
+
+.timeline-phase.phase-indoor-sow {
+    background: #a0b8e8;
+}
+
+.timeline-phase.phase-indoor {
+    background: #7c9ae0;
+}
+
+.timeline-phase.phase-planting-window {
+    background: #f0ad4e;
+}
+
+.timeline-phase.phase-transplant {
+    background: #d4a574;
+}
+
+.timeline-phase.phase-outdoor {
+    background: #5cb85c;
+}
+
+.timeline-phase.phase-harvest {
+    background: #e67e22;
+}
+
+.timeline-phase.phase-manual {
+    background: var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.5;
+}
+
+/* Legacy bar classes (for action list dots) */
 .timeline-bar {
     position: absolute;
     height: 100%;
     border-radius: var(--radius-sm);
     opacity: 0.85;
-}
-
-.timeline-bar.period-bar {
-    opacity: 0.5;
-    height: 80%;
-    top: 10%;
-}
-
-.timeline-bar.start-indoors {
-    background: #7c9ae0;
-}
-
-.timeline-bar.transplant {
-    background: #5cb85c;
-}
-
-.timeline-bar.direct-sow {
-    background: #f0ad4e;
-}
-
-.timeline-bar.manual {
-    background: var(--color-border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 .timeline-bar-label {
@@ -992,6 +1039,176 @@ a:hover {
     width: 2px;
     background: var(--color-terracotta);
     z-index: 10;
+}
+
+.timeline-frost {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #5b9bd5;
+    z-index: 9;
+    opacity: 0.7;
+}
+
+/* Timeline legend */
+.timeline-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 8px;
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.legend-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 10px;
+    border-radius: 2px;
+}
+
+.legend-swatch.phase-indoor-sow { background: #a0b8e8; }
+.legend-swatch.phase-indoor { background: #7c9ae0; }
+.legend-swatch.phase-planting-window { background: #f0ad4e; }
+.legend-swatch.phase-transplant { background: #d4a574; }
+.legend-swatch.phase-outdoor { background: #5cb85c; }
+.legend-swatch.phase-harvest { background: #e67e22; }
+.legend-swatch.legend-frost { background: #5b9bd5; width: 2px; }
+.legend-swatch.legend-today { background: var(--color-terracotta); width: 2px; }
+
+/* Single-seed timeline on detail page */
+.timeline.timeline-single {
+    grid-template-columns: 1fr;
+}
+
+.timeline.timeline-single .timeline-seed-name {
+    display: none;
+}
+
+.timeline.timeline-single .timeline-bars {
+    height: 32px;
+}
+
+/* Key dates on detail page */
+.key-dates {
+    margin-top: 12px;
+}
+
+.key-dates h3 {
+    font-size: 0.9rem;
+    margin-bottom: 6px;
+    color: var(--color-text-muted);
+}
+
+/* Dual timeline sections (indoor/outdoor) */
+.timeline-method-section {
+    margin-bottom: 1.5rem;
+}
+
+.timeline-method-section:last-of-type {
+    margin-bottom: 0.5rem;
+}
+
+.timeline-method-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.timeline-method-header h3 {
+    font-size: 0.95rem;
+    margin: 0;
+    color: var(--color-text);
+}
+
+.badge-recommended {
+    background: #2d7a3a;
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+/* Start method selector for planned seeds */
+.start-method-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 1rem;
+    padding: 10px 12px;
+    background: var(--color-cream);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+}
+
+.start-method-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+}
+
+.btn-method {
+    font-size: 0.8rem;
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background: white;
+    color: var(--color-text);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.btn-method:hover {
+    border-color: var(--color-sage);
+    background: var(--color-sage-light, #f0f5f0);
+}
+
+.btn-method.active {
+    background: var(--color-sage);
+    color: white;
+    border-color: var(--color-sage);
+}
+
+/* Source link */
+.source-link {
+    display: inline-block;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    margin-bottom: 1rem;
+}
+
+.source-link:hover {
+    color: var(--color-link);
+}
+
+/* Botanical name */
+.botanical-name {
+    color: var(--color-text-muted);
+    margin-top: -0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+/* Seed name links in timeline */
+.timeline-seed-name a {
+    color: var(--color-text);
+    text-decoration: none;
+}
+
+.timeline-seed-name a:hover {
+    color: var(--color-link);
+    text-decoration: underline;
 }
 
 /* Manual Review Section */
@@ -1080,5 +1297,6 @@ a:hover {
 
     .seed-row {
         padding: 12px 16px;
+        gap: 8px;
     }
 }

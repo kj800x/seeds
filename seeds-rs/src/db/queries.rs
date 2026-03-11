@@ -58,6 +58,23 @@ pub struct NewSeed {
     pub raw_html: Option<String>,
     pub shopify_product_id: Option<i64>,
     pub tags_raw: Option<String>,
+    // Expanded growing details
+    pub plant_type: Option<String>,
+    pub botanical_name: Option<String>,
+    pub family: Option<String>,
+    pub native_region: Option<String>,
+    pub hardiness: Option<String>,
+    pub exposure: Option<String>,
+    pub bloom_period: Option<String>,
+    pub plant_dimensions: Option<String>,
+    pub variety_info: Option<String>,
+    pub attributes: Option<String>,
+    pub when_to_sow_outside: Option<String>,
+    pub when_to_start_inside: Option<String>,
+    pub days_to_emerge: Option<String>,
+    pub row_spacing: Option<String>,
+    pub thinning: Option<String>,
+    pub special_care: Option<String>,
 }
 
 pub async fn insert_seed(pool: &SqlitePool, seed: &NewSeed) -> Result<i64, sqlx::Error> {
@@ -67,8 +84,13 @@ pub async fn insert_seed(pool: &SqlitePool, seed: &NewSeed) -> Result<i64, sqlx:
             light_requirement, frost_tolerance, is_organic, is_heirloom,
             days_to_maturity, sow_depth, plant_spacing, germination_info,
             planting_instructions, growing_instructions, harvest_instructions,
-            raw_html, shopify_product_id, tags_raw
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            raw_html, shopify_product_id, tags_raw,
+            plant_type, botanical_name, family, native_region, hardiness, exposure,
+            bloom_period, plant_dimensions, variety_info, attributes,
+            when_to_sow_outside, when_to_start_inside, days_to_emerge,
+            row_spacing, thinning, special_care
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&seed.product_handle)
     .bind(&seed.source_url)
@@ -90,10 +112,89 @@ pub async fn insert_seed(pool: &SqlitePool, seed: &NewSeed) -> Result<i64, sqlx:
     .bind(&seed.raw_html)
     .bind(seed.shopify_product_id)
     .bind(&seed.tags_raw)
+    .bind(&seed.plant_type)
+    .bind(&seed.botanical_name)
+    .bind(&seed.family)
+    .bind(&seed.native_region)
+    .bind(&seed.hardiness)
+    .bind(&seed.exposure)
+    .bind(&seed.bloom_period)
+    .bind(&seed.plant_dimensions)
+    .bind(&seed.variety_info)
+    .bind(&seed.attributes)
+    .bind(&seed.when_to_sow_outside)
+    .bind(&seed.when_to_start_inside)
+    .bind(&seed.days_to_emerge)
+    .bind(&seed.row_spacing)
+    .bind(&seed.thinning)
+    .bind(&seed.special_care)
     .execute(pool)
     .await?;
 
     Ok(result.last_insert_rowid())
+}
+
+/// Re-parse all seeds from their stored raw_html, updating the growing detail columns.
+pub async fn reparse_all_seeds(pool: &SqlitePool) -> Result<u64, sqlx::Error> {
+    use crate::scraper::parser;
+
+    let rows = sqlx::query_as::<_, (i64, Option<String>)>(
+        "SELECT id, raw_html FROM seeds WHERE raw_html IS NOT NULL",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let mut updated = 0u64;
+    for (id, raw_html) in &rows {
+        if let Some(html) = raw_html {
+            let growing = parser::parse_growing_details(html);
+
+            sqlx::query(
+                "UPDATE seeds SET
+                    days_to_maturity = ?, sow_depth = ?, plant_spacing = ?,
+                    germination_info = ?, planting_instructions = ?,
+                    growing_instructions = ?, harvest_instructions = ?,
+                    plant_type = ?, botanical_name = ?, family = ?,
+                    native_region = ?,
+                    hardiness = ?, exposure = ?, bloom_period = ?,
+                    plant_dimensions = ?, variety_info = ?, attributes = ?,
+                    when_to_sow_outside = ?, when_to_start_inside = ?,
+                    days_to_emerge = ?, row_spacing = ?, thinning = ?,
+                    special_care = ?
+                WHERE id = ?",
+            )
+            .bind(&growing.days_to_maturity)
+            .bind(&growing.sow_depth)
+            .bind(&growing.plant_spacing)
+            .bind(&growing.germination_info)
+            .bind(&growing.planting_instructions)
+            .bind(&growing.growing_instructions)
+            .bind(&growing.harvest_instructions)
+            .bind(&growing.plant_type)
+            .bind(&growing.botanical_name)
+            .bind(&growing.family)
+            .bind(&growing.native_region)
+            .bind(&growing.hardiness)
+            .bind(&growing.exposure)
+            .bind(&growing.bloom_period)
+            .bind(&growing.plant_dimensions)
+            .bind(&growing.variety_info)
+            .bind(&growing.attributes)
+            .bind(&growing.when_to_sow_outside)
+            .bind(&growing.when_to_start_inside)
+            .bind(&growing.days_to_emerge)
+            .bind(&growing.row_spacing)
+            .bind(&growing.thinning)
+            .bind(&growing.special_care)
+            .bind(id)
+            .execute(pool)
+            .await?;
+
+            updated += 1;
+        }
+    }
+
+    Ok(updated)
 }
 
 // --- Seed Purchase CRUD ---
@@ -246,6 +347,22 @@ pub async fn list_planned_seeds(pool: &SqlitePool, year: i64) -> Result<Vec<Seed
     .await
 }
 
+/// List all seeds with their start_method for a given year's plan.
+pub async fn list_planned_seeds_with_method(pool: &SqlitePool, year: i64) -> Result<Vec<(Seed, Option<String>)>, sqlx::Error> {
+    // sqlx doesn't directly support this tuple, so we query separately
+    let seeds = list_planned_seeds(pool, year).await?;
+    let plans = list_season_plans(pool, year).await?;
+
+    let method_map: std::collections::HashMap<i64, Option<String>> = plans.into_iter()
+        .map(|p| (p.seed_id, p.start_method))
+        .collect();
+
+    Ok(seeds.into_iter().map(|s| {
+        let method = method_map.get(&s.id).cloned().flatten();
+        (s, method)
+    }).collect())
+}
+
 /// Get all planned seed IDs for a given year (efficient for set lookup).
 pub async fn planned_seed_ids(pool: &SqlitePool, year: i64) -> Result<Vec<i64>, sqlx::Error> {
     let rows = sqlx::query_as::<_, (i64,)>(
@@ -256,6 +373,30 @@ pub async fn planned_seed_ids(pool: &SqlitePool, year: i64) -> Result<Vec<i64>, 
     .await?;
 
     Ok(rows.into_iter().map(|(id,)| id).collect())
+}
+
+/// Update the start method for a seed in a year's plan.
+pub async fn update_plan_start_method(pool: &SqlitePool, seed_id: i64, year: i64, start_method: Option<&str>) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE season_plans SET start_method = ? WHERE seed_id = ? AND year = ?")
+        .bind(start_method)
+        .bind(seed_id)
+        .bind(year)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+/// Get the start method for a specific seed in a year's plan.
+pub async fn get_plan_start_method(pool: &SqlitePool, seed_id: i64, year: i64) -> Result<Option<String>, sqlx::Error> {
+    let row = sqlx::query_as::<_, (Option<String>,)>(
+        "SELECT start_method FROM season_plans WHERE seed_id = ? AND year = ?"
+    )
+    .bind(seed_id)
+    .bind(year)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(row.and_then(|(m,)| m))
 }
 
 pub async fn delete_seed(pool: &SqlitePool, id: i64) -> Result<bool, sqlx::Error> {

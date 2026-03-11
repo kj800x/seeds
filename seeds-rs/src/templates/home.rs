@@ -33,10 +33,6 @@ pub fn home_page(
                 input type="url" name="url"
                       placeholder="Paste a Botanical Interests product URL..."
                       required;
-                input type="number" name="purchase_year"
-                      placeholder="Purchase year (e.g. 2025)"
-                      min="2000" max="2030"
-                      class="purchase-year-input";
                 button type="submit" { "Add Seed" }
                 span.spinner { "Importing seed data\u{2026}" }
             }
@@ -58,39 +54,41 @@ pub fn home_page(
                         @let in_plan = planned_seeds.contains(&seed.id);
                         li.seed-item {
                             a.seed-row href=(format!("/seeds/{}", seed.id)) {
-                                div.seed-row-title { (seed.title) }
-                                div.seed-row-meta {
-                                    @if let Some(ref cat) = seed.category {
-                                        span { (cat) }
-                                    }
-                                    @if let Some(ref subcat) = seed.subcategory {
-                                        span { (subcat) }
-                                    }
-                                    @if let Some(ref dtm) = seed.days_to_maturity {
-                                        span { (dtm) " days" }
-                                    }
-                                    @if let Some(year) = newest_year {
-                                        span {
-                                            @if count > 1 {
-                                                (count) " lots (newest " (year) ")"
-                                            } @else {
-                                                "Purchased " (year)
+                                div.seed-row-main {
+                                    div.seed-row-title { (seed.title) }
+                                    div.seed-row-meta {
+                                        @if let Some(ref cat) = seed.category {
+                                            span { (cat) }
+                                        }
+                                        @if let Some(ref subcat) = seed.subcategory {
+                                            span { (subcat) }
+                                        }
+                                        @if let Some(ref dtm) = seed.days_to_maturity {
+                                            span { (dtm) " days" }
+                                        }
+                                        @if let Some(year) = newest_year {
+                                            span {
+                                                @if count > 1 {
+                                                    (count) " lots (newest " (year) ")"
+                                                } @else {
+                                                    "Purchased " (year)
+                                                }
                                             }
                                         }
-                                    }
-                                    @let viability = estimate_viability(
-                                        seed.subcategory.as_deref(),
-                                        seed.category.as_deref(),
-                                        newest_year,
-                                    );
-                                    @if let Some(ref est) = viability {
-                                        span class=(format!("viability {}", est.color_tier())) { (est.percentage) "% viable" }
-                                    } @else if newest_year.is_none() {
-                                        span.viability-prompt { "Add purchase to see viability" }
+                                        @let viability = estimate_viability(
+                                            seed.subcategory.as_deref(),
+                                            seed.category.as_deref(),
+                                            newest_year,
+                                        );
+                                        @if let Some(ref est) = viability {
+                                            span class=(format!("viability {}", est.color_tier())) { (est.percentage) "% viable" }
+                                        } @else if newest_year.is_none() {
+                                            span.viability-prompt { "Add purchase to see viability" }
+                                        }
                                     }
                                 }
+                                (plan_toggle_button(seed.id, in_plan))
                             }
-                            (plan_toggle_button(seed.id, in_plan))
                         }
                     }
                 }

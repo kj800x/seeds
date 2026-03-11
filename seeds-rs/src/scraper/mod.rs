@@ -74,6 +74,22 @@ pub async fn scrape_and_save(state: &AppState, url: &str) -> Result<i64, AppErro
         raw_html: Some(raw_html),
         shopify_product_id: Some(product.id),
         tags_raw: Some(product.tags),
+        plant_type: growing.plant_type,
+        botanical_name: growing.botanical_name,
+        family: growing.family,
+        native_region: growing.native_region,
+        hardiness: growing.hardiness,
+        exposure: growing.exposure,
+        bloom_period: growing.bloom_period,
+        plant_dimensions: growing.plant_dimensions,
+        variety_info: growing.variety_info,
+        attributes: growing.attributes,
+        when_to_sow_outside: growing.when_to_sow_outside,
+        when_to_start_inside: growing.when_to_start_inside,
+        days_to_emerge: growing.days_to_emerge,
+        row_spacing: growing.row_spacing,
+        thinning: growing.thinning,
+        special_care: growing.special_care,
     };
 
     let seed_id = queries::insert_seed(&state.db, &new_seed).await?;
