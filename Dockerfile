@@ -11,7 +11,8 @@ WORKDIR /usr/src/seeds-rs
 COPY Cargo.toml Cargo.lock ./
 RUN cargo build --release
 
-# - Copy source
+# - Copy source and migrations (sqlx::migrate! needs migrations at compile time)
+COPY migrations ./migrations
 COPY src ./src
 RUN touch src/main.rs && cargo build --release
 
