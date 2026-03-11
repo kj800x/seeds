@@ -66,7 +66,7 @@ async fn main() {
         .await
         .expect("Failed to bind to port 3000");
 
-    tracing::info!("Seeds app listening on http://localhost:3000");
+    tracing::info!("Seeds app listening on http://0.0.0.0:3000");
 
     axum::serve(listener, app)
         .await
