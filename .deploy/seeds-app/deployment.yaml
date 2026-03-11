@@ -38,5 +38,3 @@ spec:
           nfs:
             path: /data/services/seeds
             server: 10.60.1.15
-      nodeSelector:
-        dedicated: nas
