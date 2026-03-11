@@ -41,6 +41,10 @@ pub fn home_page(
 
         section.seed-list-section {
             h2 { "Your Seeds" }
+            @if !seeds.is_empty() {
+                input.seed-search type="text" placeholder="Search seeds\u{2026}"
+                      oninput="let q=this.value.toLowerCase();document.querySelectorAll('.seed-item').forEach(el=>{let t=el.querySelector('.seed-row-title').textContent.toLowerCase();el.style.display=t.includes(q)?'':'none'})";
+            }
             @if seeds.is_empty() {
                 div.empty-state {
                     p { "No seeds yet." }
