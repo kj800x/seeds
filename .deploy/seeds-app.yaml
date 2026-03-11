@@ -1,6 +1,6 @@
 artifactRepo:
   owner: kj800x
-  repo: seeds-app
+  repo: seeds
   branch: master
 
 team: kj800x
