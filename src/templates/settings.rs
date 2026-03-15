@@ -9,6 +9,23 @@ pub fn settings_page() -> Markup {
         }
 
         section.detail-section {
+            h2 { "Data Management" }
+            p.settings-danger-desc {
+                "Re-parse all seeds from stored HTML. Useful after parser improvements to update growing details."
+            }
+            button.btn #reparse-btn
+                   hx-post="/seeds/reparse"
+                   hx-confirm="Re-parse all seeds from stored HTML?"
+                   hx-target="#reparse-result"
+                   hx-swap="innerHTML"
+                   hx-indicator="#reparse-btn"
+            {
+                "Re-parse All Seeds"
+            }
+            div #reparse-result {}
+        }
+
+        section.detail-section {
             h2 { "Danger Zone" }
             p.settings-danger-desc {
                 "This will permanently delete all seeds, purchases, images, and plans. This cannot be undone."
@@ -26,6 +43,12 @@ pub fn settings_page() -> Markup {
     };
 
     layout_with_nav("Settings", "settings", content)
+}
+
+pub fn reparse_success(count: u64) -> Markup {
+    html! {
+        p.reset-success { "Re-parsed " (count) " seeds successfully." }
+    }
 }
 
 pub fn reset_success() -> Markup {

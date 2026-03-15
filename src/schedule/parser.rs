@@ -25,8 +25,8 @@ pub fn parse_planting_timing_from_fields(
     if let Some(inside_text) = when_to_start_inside {
         let lower = inside_text.to_lowercase();
 
-        // Check if indoor start is recommended
-        if lower.contains("recommended") {
+        // Check if indoor start is recommended (must start with "RECOMMENDED")
+        if lower.starts_with("recommended.") || lower.starts_with("recommended:") {
             timing.indoor_start_recommended = true;
         }
 

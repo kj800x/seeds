@@ -244,16 +244,10 @@ pub async fn delete_seed_handler(
 /// POST /seeds/reparse - Re-parse all seeds from stored raw_html
 pub async fn reparse_all(
     State(state): State<AppState>,
-) -> Result<Response, AppError> {
+) -> Result<Markup, AppError> {
     let count = queries::reparse_all_seeds(&state.db).await?;
     tracing::info!("Re-parsed {} seeds from stored HTML", count);
-
-    Ok((
-        StatusCode::OK,
-        [("HX-Redirect", "/".to_string())],
-        format!("Re-parsed {} seeds", count),
-    )
-        .into_response())
+    Ok(crate::templates::settings::reparse_success(count))
 }
 
 /// Query params for toggle_plan

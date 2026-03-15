@@ -1,7 +1,7 @@
 use chrono::{Duration, NaiveDate};
 
 use crate::db::models::Seed;
-use super::parser::{PlantingTiming, parse_days_to_maturity, parse_days_to_emerge};
+use super::parser::{PlantingTiming, parse_days_to_maturity, parse_days_to_emerge, parse_planting_timing_from_fields};
 
 /// Halifax MA last frost date: May 10
 pub const HALIFAX_MA_LAST_FROST: (u32, u32) = (5, 10);
@@ -91,6 +91,119 @@ pub struct SeedTimeline {
     pub seed_title: String,
     pub phases: Vec<TimelinePhase>,
     pub actions: Vec<PlantingAction>,
+}
+
+/// Summary of a seed's recommended sowing window relative to today.
+#[derive(Debug, Clone)]
+pub struct SowingStatus {
+    /// "Start Indoors" or "Direct Sow"
+    pub method: &'static str,
+    /// First day of the recommended sowing window
+    pub start_date: NaiveDate,
+    /// Last day of the recommended sowing window
+    pub end_date: NaiveDate,
+    /// Negative = days until window opens, 0 = currently in window, positive = days since window closed
+    pub days_relative: i64,
+}
+
+/// Compute sowing status for a seed given the current date.
+/// When `method_override` is Some, forces that method instead of using the recommendation.
+/// Returns None if timing cannot be parsed or no method applies.
+pub fn compute_sowing_status(seed: &Seed, today: NaiveDate, year: i32, method_override: Option<StartMethod>) -> Option<SowingStatus> {
+    let timing = parse_planting_timing_from_fields(
+        seed.when_to_sow_outside.as_deref(),
+        seed.when_to_start_inside.as_deref(),
+    );
+
+    let frost = last_frost_date(year);
+
+    let use_indoor = match method_override {
+        Some(StartMethod::Indoor) => timing.start_indoors_weeks_before.is_some(),
+        Some(StartMethod::Outdoor) => false,
+        None => timing.indoor_start_recommended && timing.start_indoors_weeks_before.is_some(),
+    };
+    if use_indoor {
+        // Indoor path
+        let weeks_before = timing.start_indoors_weeks_before.unwrap();
+        let base = if let Some(weeks_rel) = timing.transplant_weeks_relative {
+            frost + Duration::weeks(weeks_rel as i64)
+        } else {
+            frost
+        };
+        let start = base - Duration::weeks(weeks_before as i64);
+        let days_to_emerge = seed.days_to_emerge.as_deref()
+            .and_then(parse_days_to_emerge)
+            .unwrap_or(10) as i64;
+        let end = start + Duration::days(days_to_emerge.max(14));
+
+        let days_relative = if today < start {
+            -(start - today).num_days()
+        } else if today <= end {
+            0
+        } else {
+            (today - end).num_days()
+        };
+
+        Some(SowingStatus {
+            method: "Start Indoors",
+            start_date: start,
+            end_date: end,
+            days_relative,
+        })
+    } else if timing.direct_sow_weeks_relative.is_some() {
+        // Outdoor path
+        let weeks_rel = timing.direct_sow_weeks_relative.unwrap();
+        let start = frost + Duration::weeks(weeks_rel as i64);
+        let days_to_emerge = seed.days_to_emerge.as_deref()
+            .and_then(parse_days_to_emerge)
+            .unwrap_or(10) as i64;
+        let end = start + Duration::days(days_to_emerge.max(14));
+
+        let days_relative = if today < start {
+            -(start - today).num_days()
+        } else if today <= end {
+            0
+        } else {
+            (today - end).num_days()
+        };
+
+        Some(SowingStatus {
+            method: "Direct Sow",
+            start_date: start,
+            end_date: end,
+            days_relative,
+        })
+    } else if timing.start_indoors_weeks_before.is_some() {
+        // Has indoor option but not explicitly recommended — still show it
+        let weeks_before = timing.start_indoors_weeks_before.unwrap();
+        let base = if let Some(weeks_rel) = timing.transplant_weeks_relative {
+            frost + Duration::weeks(weeks_rel as i64)
+        } else {
+            frost
+        };
+        let start = base - Duration::weeks(weeks_before as i64);
+        let days_to_emerge = seed.days_to_emerge.as_deref()
+            .and_then(parse_days_to_emerge)
+            .unwrap_or(10) as i64;
+        let end = start + Duration::days(days_to_emerge.max(14));
+
+        let days_relative = if today < start {
+            -(start - today).num_days()
+        } else if today <= end {
+            0
+        } else {
+            (today - end).num_days()
+        };
+
+        Some(SowingStatus {
+            method: "Start Indoors",
+            start_date: start,
+            end_date: end,
+            days_relative,
+        })
+    } else {
+        None
+    }
 }
 
 pub fn last_frost_date(year: i32) -> NaiveDate {

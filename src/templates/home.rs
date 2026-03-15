@@ -2,7 +2,7 @@ use maud::{html, Markup};
 use std::collections::{HashMap, HashSet};
 
 use crate::db::models::Seed;
-use crate::viability::estimate_viability;
+use crate::schedule::SowingStatus;
 use super::layout::layout;
 
 /// Render a plan toggle button for a seed. Used in both the seed list and the toggle POST response.
@@ -25,6 +25,7 @@ pub fn home_page(
     newest_purchases: &HashMap<i64, i64>,
     purchase_counts: &HashMap<i64, i64>,
     planned_seeds: &HashSet<i64>,
+    sowing_statuses: &HashMap<i64, SowingStatus>,
 ) -> Markup {
     let content = html! {
         section.add-seed {
@@ -67,8 +68,22 @@ pub fn home_page(
                                         @if let Some(ref subcat) = seed.subcategory {
                                             span { (subcat) }
                                         }
-                                        @if let Some(ref dtm) = seed.days_to_maturity {
-                                            span { (dtm) " days" }
+                                        @if let Some(status) = sowing_statuses.get(&seed.id) {
+                                            @let css_class = if status.days_relative == 0 {
+                                                "sowing-status sowing-now"
+                                            } else if status.days_relative > 0 {
+                                                "sowing-status sowing-past"
+                                            } else {
+                                                "sowing-status"
+                                            };
+                                            @let timing_text = if status.days_relative < 0 {
+                                                format!("in {} days", -status.days_relative)
+                                            } else if status.days_relative == 0 {
+                                                "now".to_string()
+                                            } else {
+                                                format!("{} days ago", status.days_relative)
+                                            };
+                                            span class=(css_class) { (status.method) " \u{2014} " (timing_text) }
                                         }
                                         @if let Some(year) = newest_year {
                                             span {
@@ -78,16 +93,6 @@ pub fn home_page(
                                                     "Purchased " (year)
                                                 }
                                             }
-                                        }
-                                        @let viability = estimate_viability(
-                                            seed.subcategory.as_deref(),
-                                            seed.category.as_deref(),
-                                            newest_year,
-                                        );
-                                        @if let Some(ref est) = viability {
-                                            span class=(format!("viability {}", est.color_tier())) { (est.percentage) "% viable" }
-                                        } @else if newest_year.is_none() {
-                                            span.viability-prompt { "Add purchase to see viability" }
                                         }
                                     }
                                 }

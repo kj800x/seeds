@@ -343,7 +343,8 @@ a:hover {
 }
 
 .seed-row-meta span + span::before {
-    content: " \00b7 ";
+    content: "\00b7";
+    margin: 0 2px;
 }
 
 /* Season Plan Toggle */
@@ -422,6 +423,21 @@ a:hover {
 .viability-prompt {
     font-style: italic;
     color: var(--color-warm-brown-light);
+}
+
+/* Sowing Status in Seed List */
+.sowing-status {
+    color: var(--color-text-muted);
+}
+
+.sowing-now {
+    color: #3d8b3d;
+    font-weight: 600;
+}
+
+.sowing-past {
+    color: var(--color-warm-brown-light);
+    font-style: italic;
 }
 
 /* Purchase Year Input */
