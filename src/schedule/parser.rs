@@ -43,11 +43,13 @@ pub fn parse_planting_timing_from_fields(
 
             // Look for transplant timing in the same text: "usually X to Y weeks after your average last frost"
             if let Some((smaller, _)) = extract_weeks_range(&lower, "after your average last frost")
+                .or_else(|| extract_weeks_range(&lower, "after average last frost"))
                 .or_else(|| extract_weeks_range(&lower, "after last frost"))
             {
                 timing.transplant_weeks_relative = Some(smaller as i8);
             }
         } else if let Some((_, larger)) = extract_weeks_range(&lower, "before your average last frost")
+            .or_else(|| extract_weeks_range(&lower, "before average last frost"))
             .or_else(|| extract_weeks_range(&lower, "before last frost"))
         {
             // Single-phase indoor start: "6 to 8 weeks before your average last frost date"
@@ -60,6 +62,7 @@ pub fn parse_planting_timing_from_fields(
         let lower = outside_text.to_lowercase();
 
         if let Some((smaller, _)) = extract_weeks_range(&lower, "after your average last frost")
+            .or_else(|| extract_weeks_range(&lower, "after average last frost"))
             .or_else(|| extract_weeks_range(&lower, "after last frost"))
         {
             if timing.start_indoors_weeks_before.is_some() && timing.transplant_weeks_relative.is_none() {
@@ -74,6 +77,7 @@ pub fn parse_planting_timing_from_fields(
                 timing.direct_sow_weeks_relative = Some(smaller as i8);
             }
         } else if let Some((_, larger)) = extract_weeks_range(&lower, "before your average last frost")
+            .or_else(|| extract_weeks_range(&lower, "before average last frost"))
             .or_else(|| extract_weeks_range(&lower, "before last frost"))
         {
             // Cool-season: sow before frost
