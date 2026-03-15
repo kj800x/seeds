@@ -52,9 +52,6 @@ pub fn parse_planting_timing_from_fields(
         {
             // Single-phase indoor start: "6 to 8 weeks before your average last frost date"
             timing.start_indoors_weeks_before = Some(larger);
-            if !lower.contains("not recommended") {
-                timing.indoor_start_recommended = true;
-            }
         }
     }
 
@@ -234,7 +231,8 @@ mod tests {
         );
         assert_eq!(timing.start_indoors_weeks_before, Some(8));
         assert_eq!(timing.direct_sow_weeks_relative, Some(-6));
-        assert!(timing.indoor_start_recommended);
+        // Neither text explicitly says "recommended", so no recommendation
+        assert!(!timing.indoor_start_recommended);
     }
 
     #[test]
@@ -246,6 +244,18 @@ mod tests {
         assert_eq!(timing.start_indoors_weeks_before, Some(12));
         assert!(timing.indoor_start_recommended);
         assert_eq!(timing.direct_sow_weeks_relative, Some(1));
+    }
+
+    #[test]
+    fn test_fields_lettuce_outdoor_recommended() {
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 2 to 4 weeks before your average last frost date, and when soil temperature is at least 40°F, ideally 60°–70°F."),
+            Some("4 to 6 weeks before your average last frost date, and in summer when soil temperatures are too warm (above 80°F) to germinate lettuce seed."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(6));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(-4));
+        // Outdoor text says "RECOMMENDED", indoor does not
+        assert!(!timing.indoor_start_recommended);
     }
 
     #[test]
