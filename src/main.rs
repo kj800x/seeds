@@ -3,6 +3,7 @@ mod error;
 mod routes;
 mod schedule;
 mod scraper;
+mod search;
 mod templates;
 mod viability;
 
@@ -42,6 +43,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(routes::home::home))
+        .route("/search", get(routes::home::search))
         .route("/seeds/{id}", get(routes::seeds::seed_detail)
                               .delete(routes::seeds::delete_seed_handler))
         .route("/seeds/{id}/purchases", get(routes::seeds::purchases_fragment)

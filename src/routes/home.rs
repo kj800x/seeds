@@ -1,15 +1,27 @@
-use axum::extract::State;
-use chrono::{Datelike, Local};
+use axum::extract::{Query, State};
+use chrono::{Datelike, Local, NaiveDate};
 use maud::Markup;
 use std::collections::{HashMap, HashSet};
 
-use crate::db::models::AppState;
+use crate::db::models::{AppState, Seed};
 use crate::db::queries;
 use crate::error::AppError;
 use crate::schedule::{SowingStatus, StartMethod, compute_sowing_status};
-use crate::templates::home::home_page;
+use crate::search::{self, SearchQuery, SeedContext};
+use crate::templates::home::{home_page, seed_list_fragment};
 
-pub async fn home(State(state): State<AppState>) -> Result<Markup, AppError> {
+struct SeedData {
+    seeds: Vec<Seed>,
+    newest_purchases: HashMap<i64, i64>,
+    purchase_counts: HashMap<i64, i64>,
+    planned_seeds: HashSet<i64>,
+    plan_methods: HashMap<i64, Option<String>>,
+    sowing_statuses: HashMap<i64, SowingStatus>,
+    today: NaiveDate,
+    current_year: i32,
+}
+
+async fn load_seed_data(state: &AppState) -> Result<SeedData, AppError> {
     let seeds = queries::list_seeds(&state.db).await?;
     let newest_purchases: HashMap<i64, i64> = queries::newest_purchase_per_seed(&state.db)
         .await?
@@ -44,5 +56,79 @@ pub async fn home(State(state): State<AppState>) -> Result<Markup, AppError> {
             .map(|st| st.start_date)
             .unwrap_or(chrono::NaiveDate::MAX)
     });
-    Ok(home_page(&seeds, &newest_purchases, &purchase_counts, &planned_seeds, &sowing_statuses))
+    Ok(SeedData {
+        seeds,
+        newest_purchases,
+        purchase_counts,
+        planned_seeds,
+        plan_methods,
+        sowing_statuses,
+        today,
+        current_year,
+    })
+}
+
+pub async fn home(State(state): State<AppState>) -> Result<Markup, AppError> {
+    let data = load_seed_data(&state).await?;
+    Ok(home_page(&data.seeds, &data.newest_purchases, &data.purchase_counts, &data.planned_seeds, &data.sowing_statuses))
+}
+
+#[derive(serde::Deserialize)]
+pub struct SearchParams {
+    #[serde(default)]
+    q: String,
+}
+
+pub async fn search(
+    State(state): State<AppState>,
+    Query(params): Query<SearchParams>,
+) -> Result<Markup, AppError> {
+    let data = load_seed_data(&state).await?;
+
+    let query = search::parse_query(&params.q);
+
+    let (filtered_seeds, error_msg) = match query {
+        Ok(SearchQuery::Plaintext(ref q)) if q.is_empty() => {
+            (data.seeds.clone(), None)
+        }
+        Ok(SearchQuery::Plaintext(ref q)) => {
+            let filtered: Vec<Seed> = data.seeds.iter()
+                .filter(|s| s.title.to_lowercase().contains(q))
+                .cloned()
+                .collect();
+            (filtered, None)
+        }
+        Ok(SearchQuery::SExp(ref filter)) => {
+            let filtered: Vec<Seed> = data.seeds.iter()
+                .filter(|seed| {
+                    let ctx = SeedContext {
+                        seed,
+                        in_plan: data.planned_seeds.contains(&seed.id),
+                        plan_method: data.plan_methods.get(&seed.id)
+                            .and_then(|m| m.as_deref()),
+                        sowing_status: data.sowing_statuses.get(&seed.id),
+                        newest_purchase_year: data.newest_purchases.get(&seed.id).copied(),
+                        today: data.today,
+                        current_year: data.current_year,
+                    };
+                    search::matches(filter, &ctx)
+                })
+                .cloned()
+                .collect();
+            (filtered, None)
+        }
+        Err(e) => {
+            // On parse error, show all seeds with a warning
+            (data.seeds.clone(), Some(e))
+        }
+    };
+
+    Ok(seed_list_fragment(
+        &filtered_seeds,
+        &data.newest_purchases,
+        &data.purchase_counts,
+        &data.planned_seeds,
+        &data.sowing_statuses,
+        error_msg.as_deref(),
+    ))
 }
