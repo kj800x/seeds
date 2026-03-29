@@ -27,6 +27,17 @@ pub async fn get_seed_images(
     .await
 }
 
+/// Returns (seed_id, local_filename) for the first image of each seed.
+pub async fn first_image_per_seed(
+    pool: &SqlitePool,
+) -> Result<Vec<(i64, String)>, sqlx::Error> {
+    sqlx::query_as::<_, (i64, String)>(
+        "SELECT seed_id, local_filename FROM seed_images WHERE position = (SELECT MIN(position) FROM seed_images si WHERE si.seed_id = seed_images.seed_id) GROUP BY seed_id",
+    )
+    .fetch_all(pool)
+    .await
+}
+
 pub async fn find_seed_by_handle(
     pool: &SqlitePool,
     handle: &str,
@@ -303,10 +314,10 @@ pub async fn list_season_plans(pool: &SqlitePool, year: i64) -> Result<Vec<Seaso
         .await
 }
 
-/// Check if a seed is in a given year's plan.
+/// Check if a seed is actively in a given year's plan (not skipped).
 pub async fn is_seed_in_plan(pool: &SqlitePool, seed_id: i64, year: i64) -> Result<bool, sqlx::Error> {
     let row = sqlx::query_as::<_, (i64,)>(
-        "SELECT COUNT(*) FROM season_plans WHERE seed_id = ? AND year = ?"
+        "SELECT COUNT(*) FROM season_plans WHERE seed_id = ? AND year = ? AND status = 'active'"
     )
     .bind(seed_id)
     .bind(year)
@@ -316,31 +327,66 @@ pub async fn is_seed_in_plan(pool: &SqlitePool, seed_id: i64, year: i64) -> Resu
     Ok(row.0 > 0)
 }
 
-/// Toggle a seed in/out of a year's plan. Returns true if the seed is now in the plan.
-pub async fn toggle_season_plan(pool: &SqlitePool, seed_id: i64, year: i64) -> Result<bool, sqlx::Error> {
-    let exists = is_seed_in_plan(pool, seed_id, year).await?;
+/// Check if a seed is skipped for a given year.
+pub async fn is_seed_skipped(pool: &SqlitePool, seed_id: i64, year: i64) -> Result<bool, sqlx::Error> {
+    let row = sqlx::query_as::<_, (i64,)>(
+        "SELECT COUNT(*) FROM season_plans WHERE seed_id = ? AND year = ? AND status = 'skipped'"
+    )
+    .bind(seed_id)
+    .bind(year)
+    .fetch_one(pool)
+    .await?;
 
-    if exists {
-        sqlx::query("DELETE FROM season_plans WHERE seed_id = ? AND year = ?")
-            .bind(seed_id)
-            .bind(year)
-            .execute(pool)
-            .await?;
-        Ok(false)
-    } else {
-        sqlx::query("INSERT INTO season_plans (seed_id, year) VALUES (?, ?)")
-            .bind(seed_id)
-            .bind(year)
-            .execute(pool)
-            .await?;
-        Ok(true)
+    Ok(row.0 > 0)
+}
+
+/// Cycle a seed's plan status: none -> active -> skipped -> none.
+/// Returns the new status: Some("active"), Some("skipped"), or None (removed).
+pub async fn cycle_plan_status(pool: &SqlitePool, seed_id: i64, year: i64) -> Result<Option<String>, sqlx::Error> {
+    let current = sqlx::query_as::<_, (String,)>(
+        "SELECT status FROM season_plans WHERE seed_id = ? AND year = ?"
+    )
+    .bind(seed_id)
+    .bind(year)
+    .fetch_optional(pool)
+    .await?;
+
+    let status = current.map(|(s,)| s);
+    match status.as_deref() {
+        None => {
+            // Not in plan -> add as active
+            sqlx::query("INSERT INTO season_plans (seed_id, year, status) VALUES (?, ?, 'active')")
+                .bind(seed_id)
+                .bind(year)
+                .execute(pool)
+                .await?;
+            Ok(Some("active".to_string()))
+        }
+        Some("active") => {
+            // Active -> skipped
+            sqlx::query("UPDATE season_plans SET status = 'skipped', start_method = NULL WHERE seed_id = ? AND year = ?")
+                .bind(seed_id)
+                .bind(year)
+                .execute(pool)
+                .await?;
+            Ok(Some("skipped".to_string()))
+        }
+        Some(_) => {
+            // Skipped -> remove
+            sqlx::query("DELETE FROM season_plans WHERE seed_id = ? AND year = ?")
+                .bind(seed_id)
+                .bind(year)
+                .execute(pool)
+                .await?;
+            Ok(None)
+        }
     }
 }
 
-/// List all seeds that are in a given year's plan (JOIN seeds with season_plans).
+/// List all seeds that are actively in a given year's plan (excludes skipped).
 pub async fn list_planned_seeds(pool: &SqlitePool, year: i64) -> Result<Vec<Seed>, sqlx::Error> {
     sqlx::query_as::<_, Seed>(
-        "SELECT s.* FROM seeds s INNER JOIN season_plans sp ON s.id = sp.seed_id WHERE sp.year = ? ORDER BY s.title"
+        "SELECT s.* FROM seeds s INNER JOIN season_plans sp ON s.id = sp.seed_id WHERE sp.year = ? AND sp.status = 'active' ORDER BY s.title"
     )
     .bind(year)
     .fetch_all(pool)
@@ -363,10 +409,22 @@ pub async fn list_planned_seeds_with_method(pool: &SqlitePool, year: i64) -> Res
     }).collect())
 }
 
-/// Get all planned seed IDs for a given year (efficient for set lookup).
+/// Get all actively planned seed IDs for a given year (efficient for set lookup).
 pub async fn planned_seed_ids(pool: &SqlitePool, year: i64) -> Result<Vec<i64>, sqlx::Error> {
     let rows = sqlx::query_as::<_, (i64,)>(
-        "SELECT seed_id FROM season_plans WHERE year = ?"
+        "SELECT seed_id FROM season_plans WHERE year = ? AND status = 'active'"
+    )
+    .bind(year)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows.into_iter().map(|(id,)| id).collect())
+}
+
+/// Get all skipped seed IDs for a given year.
+pub async fn skipped_seed_ids(pool: &SqlitePool, year: i64) -> Result<Vec<i64>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, (i64,)>(
+        "SELECT seed_id FROM season_plans WHERE year = ? AND status = 'skipped'"
     )
     .bind(year)
     .fetch_all(pool)

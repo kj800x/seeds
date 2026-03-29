@@ -6,9 +6,14 @@ use crate::schedule::SowingStatus;
 use super::layout::layout;
 
 /// Render a plan toggle button for a seed. Used in both the seed list and the toggle POST response.
-pub fn plan_toggle_button(seed_id: i64, in_plan: bool) -> Markup {
-    let label = if in_plan { "In Plan" } else { "Add to Plan" };
-    let class = if in_plan { "btn-plan-toggle active" } else { "btn-plan-toggle" };
+pub fn plan_toggle_button(seed_id: i64, in_plan: bool, is_skipped: bool) -> Markup {
+    let (label, class) = if is_skipped {
+        ("Skipped", "btn-plan-toggle skipped")
+    } else if in_plan {
+        ("In Plan", "btn-plan-toggle active")
+    } else {
+        ("Add to Plan", "btn-plan-toggle")
+    };
     html! {
         button class=(class)
                hx-post=(format!("/plan/toggle/{}", seed_id))
@@ -27,7 +32,9 @@ pub fn seed_list_fragment(
     newest_purchases: &HashMap<i64, i64>,
     purchase_counts: &HashMap<i64, i64>,
     planned_seeds: &HashSet<i64>,
+    skipped_seeds: &HashSet<i64>,
     sowing_statuses: &HashMap<i64, SowingStatus>,
+    thumbnails: &HashMap<i64, String>,
     error: Option<&str>,
 ) -> Markup {
     html! {
@@ -42,6 +49,13 @@ pub fn seed_list_fragment(
                 @let in_plan = planned_seeds.contains(&seed.id);
                 li.seed-item {
                     a.seed-row href=(format!("/seeds/{}", seed.id)) {
+                        @if let Some(filename) = thumbnails.get(&seed.id) {
+                            img.seed-thumb src=(format!("/images/{}/{}", seed.id, filename))
+                                alt=(seed.title)
+                                loading="lazy";
+                        } @else {
+                            div.seed-thumb-placeholder {}
+                        }
                         div.seed-row-main {
                             div.seed-row-title { (seed.title) }
                             div.seed-row-meta {
@@ -79,7 +93,8 @@ pub fn seed_list_fragment(
                                 }
                             }
                         }
-                        (plan_toggle_button(seed.id, in_plan))
+                        @let is_skipped = skipped_seeds.contains(&seed.id);
+                        (plan_toggle_button(seed.id, in_plan, is_skipped))
                     }
                 }
             }
@@ -93,7 +108,9 @@ pub fn home_page(
     newest_purchases: &HashMap<i64, i64>,
     purchase_counts: &HashMap<i64, i64>,
     planned_seeds: &HashSet<i64>,
+    skipped_seeds: &HashSet<i64>,
     sowing_statuses: &HashMap<i64, SowingStatus>,
+    thumbnails: &HashMap<i64, String>,
 ) -> Markup {
     let content = html! {
         section.add-seed {
@@ -129,13 +146,13 @@ pub fn home_page(
                         h4 { "Flags" }
                         pre { "(organic)\n(heirloom)" }
                         h4 { "Plan" }
-                        pre { "(in-plan)\n(plan \"indoor\")" }
+                        pre { "(plan)\n(plan \"indoor\")\n(plan \"outdoor\")\n(plan \"skipped\")" }
                         h4 { "Timing" }
                         pre { "(start now)\n(start (before \"March 30\"))\n(sow (after now))\n(transplant (before \"2 weeks from now\"))" }
                         h4 { "Viability" }
                         pre { "(viable)\n(viability (above 50))" }
                         h4 { "Examples" }
-                        pre { "(and (category \"Vegetables\") (in-plan))\n(or (category \"Flower\") (category \"Herb\"))\n(and (start (before now)) (viable))" }
+                        pre { "(and (category \"Vegetables\") (plan))\n(or (category \"Flower\") (category \"Herb\"))\n(and (start (before now)) (viable))" }
                     }
                 }
             }
@@ -145,7 +162,7 @@ pub fn home_page(
                     p.hint { "Paste a Botanical Interests product URL above to get started." }
                 }
             } @else {
-                (seed_list_fragment(seeds, newest_purchases, purchase_counts, planned_seeds, sowing_statuses, None))
+                (seed_list_fragment(seeds, newest_purchases, purchase_counts, planned_seeds, skipped_seeds, sowing_statuses, thumbnails, None))
             }
         }
     };

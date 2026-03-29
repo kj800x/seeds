@@ -83,6 +83,8 @@ pub struct SeasonPlan {
     pub created_at: Option<String>,
     /// 'indoor', 'outdoor', or NULL (not yet chosen / use recommended)
     pub start_method: Option<String>,
+    /// 'active' or 'skipped'
+    pub status: String,
 }
 
 #[derive(Debug, Clone)]

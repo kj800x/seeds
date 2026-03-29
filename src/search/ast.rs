@@ -13,9 +13,8 @@ pub enum Filter {
     Organic,
     Heirloom,
 
-    // Plan status
-    InPlan,
-    Plan(String), // start method: "indoor" or "outdoor"
+    // Plan status: None = any active, Some("indoor"/"outdoor"/"skipped")
+    Plan(Option<String>),
 
     // Timing predicates
     Start(DatePredicate),
@@ -25,6 +24,18 @@ pub enum Filter {
     // Viability
     Viable,
     Viability(Comparison),
+}
+
+impl Filter {
+    /// Check if this filter (or any nested child) references skipped plan status.
+    pub fn references_skipped(&self) -> bool {
+        match self {
+            Filter::Plan(Some(s)) if s == "skipped" => true,
+            Filter::And(children) | Filter::Or(children) => children.iter().any(|c| c.references_skipped()),
+            Filter::Not(child) => child.references_skipped(),
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

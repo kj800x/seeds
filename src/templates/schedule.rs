@@ -354,14 +354,14 @@ fn render_timeline(
 }
 
 /// Render a mini timeline for the seed detail page.
-pub fn seed_detail_timeline(seed: &Seed, timing: &PlantingTiming, year: i32, in_plan: bool) -> Markup {
+pub fn seed_detail_timeline(seed: &Seed, timing: &PlantingTiming, year: i32, in_plan: bool, is_skipped: bool) -> Markup {
     let timeline = compute_seed_timeline(seed, timing, year);
 
     if timeline.phases.is_empty() {
         return html! {
             section #timeline-section .detail-section {
                 h2 { "Plan " (year) }
-                (render_plan_controls(seed, in_plan, false, false, None))
+                (render_plan_controls(seed, in_plan, is_skipped, false, false, None))
             }
         };
     }
@@ -372,14 +372,14 @@ pub fn seed_detail_timeline(seed: &Seed, timing: &PlantingTiming, year: i32, in_
             (render_timeline_legend())
             (render_single_timeline(&timeline, year))
             (render_key_dates(&timeline, year))
-            (render_plan_controls(seed, in_plan, false, false, None))
+            (render_plan_controls(seed, in_plan, is_skipped, false, false, None))
         }
     }
 }
 
 /// Render separate indoor and outdoor timelines on the seed detail page,
 /// with a "Recommended" badge on the appropriate one.
-pub fn seed_detail_dual_timeline(seed: &Seed, timing: &PlantingTiming, year: i32, in_plan: bool, plan_start_method: Option<&str>) -> Markup {
+pub fn seed_detail_dual_timeline(seed: &Seed, timing: &PlantingTiming, year: i32, in_plan: bool, is_skipped: bool, plan_start_method: Option<&str>) -> Markup {
     let indoor = compute_indoor_timeline(seed, timing, year);
     let outdoor = compute_outdoor_timeline(seed, timing, year);
 
@@ -387,7 +387,7 @@ pub fn seed_detail_dual_timeline(seed: &Seed, timing: &PlantingTiming, year: i32
         return html! {
             section #timeline-section .detail-section {
                 h2 { "Plan " (year) }
-                (render_plan_controls(seed, in_plan, false, false, None))
+                (render_plan_controls(seed, in_plan, is_skipped, false, false, None))
             }
         };
     }
@@ -426,15 +426,20 @@ pub fn seed_detail_dual_timeline(seed: &Seed, timing: &PlantingTiming, year: i32
                 }
             }
 
-            (render_plan_controls(seed, in_plan, has_indoor, has_outdoor, plan_start_method))
+            (render_plan_controls(seed, in_plan, is_skipped, has_indoor, has_outdoor, plan_start_method))
         }
     }
 }
 
 /// Render plan controls: add-to-plan toggle and optional start method selector.
-fn render_plan_controls(seed: &Seed, in_plan: bool, has_indoor: bool, has_outdoor: bool, plan_start_method: Option<&str>) -> Markup {
-    let label = if in_plan { "In Plan" } else { "Add to Plan" };
-    let class = if in_plan { "btn-plan-toggle active" } else { "btn-plan-toggle" };
+fn render_plan_controls(seed: &Seed, in_plan: bool, is_skipped: bool, has_indoor: bool, has_outdoor: bool, plan_start_method: Option<&str>) -> Markup {
+    let (label, class) = if is_skipped {
+        ("Skipped", "btn-plan-toggle skipped")
+    } else if in_plan {
+        ("In Plan", "btn-plan-toggle active")
+    } else {
+        ("Add to Plan", "btn-plan-toggle")
+    };
     let show_method_selector = in_plan && has_indoor && has_outdoor;
     html! {
         div.plan-controls {

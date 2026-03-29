@@ -97,7 +97,7 @@ fn detail_item(label: &str, value: &Option<String>) -> Markup {
     }
 }
 
-pub fn seed_detail_page(seed: &Seed, images: &[SeedImage], purchases: &[SeedPurchase], in_plan: bool, plan_start_method: Option<&str>) -> Markup {
+pub fn seed_detail_page(seed: &Seed, images: &[SeedImage], purchases: &[SeedPurchase], in_plan: bool, is_skipped: bool, plan_start_method: Option<&str>) -> Markup {
     let hero_image = images.iter().find(|img| img.position == 1);
     let current_year = chrono::Local::now().year();
     let timing = parse_planting_timing_from_fields(
@@ -143,9 +143,9 @@ pub fn seed_detail_page(seed: &Seed, images: &[SeedImage], purchases: &[SeedPurc
 
             // Timeline section - show separate indoor/outdoor if both available
             @if has_both {
-                (seed_detail_dual_timeline(seed, &timing, current_year, in_plan, plan_start_method))
+                (seed_detail_dual_timeline(seed, &timing, current_year, in_plan, is_skipped, plan_start_method))
             } @else {
-                (seed_detail_timeline(seed, &timing, current_year, in_plan))
+                (seed_detail_timeline(seed, &timing, current_year, in_plan, is_skipped))
             }
 
             // Purchase history & viability section

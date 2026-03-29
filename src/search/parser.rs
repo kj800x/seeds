@@ -39,15 +39,17 @@ fn parse_filter(tokens: &[Token], pos: usize) -> Result<(Filter, usize), String>
                     let pos = expect_rparen(tokens, pos)?;
                     Ok((Filter::Heirloom, pos))
                 }
-                "in-plan" => {
-                    let pos = expect_rparen(tokens, pos)?;
-                    Ok((Filter::InPlan, pos))
-                }
                 "plan" => {
-                    let s = expect_str(tokens, pos)?;
-                    let pos = pos + 1;
-                    let pos = expect_rparen(tokens, pos)?;
-                    Ok((Filter::Plan(s), pos))
+                    // (plan) or (plan "indoor") / (plan "outdoor") / (plan "skipped")
+                    if matches!(tokens.get(pos), Some(Token::RParen)) {
+                        let pos = expect_rparen(tokens, pos)?;
+                        Ok((Filter::Plan(None), pos))
+                    } else {
+                        let s = expect_str(tokens, pos)?;
+                        let pos = pos + 1;
+                        let pos = expect_rparen(tokens, pos)?;
+                        Ok((Filter::Plan(Some(s)), pos))
+                    }
                 }
                 "start" => {
                     let (pred, pos) = parse_date_predicate(tokens, pos)?;
@@ -231,8 +233,8 @@ mod tests {
     #[test]
     fn test_and() {
         assert_eq!(
-            parse_str("(and (organic) (in-plan))").unwrap(),
-            Filter::And(vec![Filter::Organic, Filter::InPlan]),
+            parse_str("(and (organic) (plan))").unwrap(),
+            Filter::And(vec![Filter::Organic, Filter::Plan(None)]),
         );
     }
 
@@ -300,10 +302,26 @@ mod tests {
     }
 
     #[test]
+    fn test_plan_no_arg() {
+        assert_eq!(
+            parse_str("(plan)").unwrap(),
+            Filter::Plan(None),
+        );
+    }
+
+    #[test]
     fn test_plan_method() {
         assert_eq!(
-            parse_str("(plan \"indoors\")").unwrap(),
-            Filter::Plan("indoors".into()),
+            parse_str("(plan \"indoor\")").unwrap(),
+            Filter::Plan(Some("indoor".into())),
+        );
+    }
+
+    #[test]
+    fn test_plan_skipped() {
+        assert_eq!(
+            parse_str("(plan \"skipped\")").unwrap(),
+            Filter::Plan(Some("skipped".into())),
         );
     }
 
@@ -318,10 +336,10 @@ mod tests {
     #[test]
     fn test_complex_query() {
         assert_eq!(
-            parse_str("(and (category \"Vegetables\") (in-plan) (start now))").unwrap(),
+            parse_str("(and (category \"Vegetables\") (plan) (start now))").unwrap(),
             Filter::And(vec![
                 Filter::Category("Vegetables".into()),
-                Filter::InPlan,
+                Filter::Plan(None),
                 Filter::Start(DatePredicate::Now),
             ]),
         );

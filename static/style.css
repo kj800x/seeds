@@ -422,6 +422,24 @@ a:hover {
     text-decoration: none;
 }
 
+.seed-thumb {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-sm, 4px);
+    object-fit: cover;
+    flex-shrink: 0;
+    margin-right: 14px;
+}
+
+.seed-thumb-placeholder {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-sm, 4px);
+    background: var(--color-cream-dark, #e5ddd4);
+    flex-shrink: 0;
+    margin-right: 14px;
+}
+
 .seed-row-main {
     flex: 1;
     min-width: 0;
@@ -476,6 +494,17 @@ a:hover {
 
 .btn-plan-toggle.active:hover {
     background: var(--color-earth-green-dark);
+}
+
+.btn-plan-toggle.skipped {
+    background: var(--color-cream-dark, #e5ddd4);
+    color: var(--color-text-muted);
+    border-color: var(--color-border);
+    text-decoration: line-through;
+}
+
+.btn-plan-toggle.skipped:hover {
+    background: var(--color-border);
 }
 
 /* Plan controls at bottom of timeline card */

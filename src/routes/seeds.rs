@@ -32,13 +32,14 @@ pub async fn seed_detail(
 
     let current_year = chrono::Local::now().year() as i64;
     let in_plan = queries::is_seed_in_plan(&state.db, id, current_year).await?;
+    let is_skipped = queries::is_seed_skipped(&state.db, id, current_year).await?;
     let plan_start_method = if in_plan {
         Some(queries::get_plan_start_method(&state.db, id, current_year).await?.unwrap_or_default())
     } else {
         None
     };
 
-    Ok(seed_detail_page(&seed, &images, &purchases, in_plan, plan_start_method.as_deref()))
+    Ok(seed_detail_page(&seed, &images, &purchases, in_plan, is_skipped, plan_start_method.as_deref()))
 }
 
 pub async fn add_seed(
@@ -272,16 +273,19 @@ fn default_start_method(seed: &crate::db::models::Seed) -> Option<&'static str> 
     }
 }
 
-/// POST /plan/toggle/{seed_id} - Toggle a seed in/out of this year's season plan
+/// POST /plan/toggle/{seed_id} - Cycle plan status: none -> active -> skipped -> none
 pub async fn toggle_plan(
     State(state): State<AppState>,
     Path(seed_id): Path<i64>,
     axum::extract::Query(query): axum::extract::Query<TogglePlanQuery>,
 ) -> Result<Markup, AppError> {
     let current_year = chrono::Local::now().year() as i64;
-    let in_plan = queries::toggle_season_plan(&state.db, seed_id, current_year).await?;
+    let new_status = queries::cycle_plan_status(&state.db, seed_id, current_year).await?;
 
-    // When adding to plan, set the default start method based on recommendations
+    let in_plan = new_status.as_deref() == Some("active");
+    let is_skipped = new_status.as_deref() == Some("skipped");
+
+    // When adding to plan as active, set the default start method
     if in_plan
         && let Some(seed) = queries::get_seed(&state.db, seed_id).await?
         && let Some(method) = default_start_method(&seed)
@@ -311,16 +315,16 @@ pub async fn toggle_plan(
                 None
             };
             return Ok(crate::templates::schedule::seed_detail_dual_timeline(
-                &seed, &timing, current_year_i32, in_plan, plan_start_method.as_deref(),
+                &seed, &timing, current_year_i32, in_plan, is_skipped, plan_start_method.as_deref(),
             ));
         } else {
             return Ok(crate::templates::schedule::seed_detail_timeline(
-                &seed, &timing, current_year_i32, in_plan,
+                &seed, &timing, current_year_i32, in_plan, is_skipped,
             ));
         }
     }
 
-    Ok(plan_toggle_button(seed_id, in_plan))
+    Ok(plan_toggle_button(seed_id, in_plan, is_skipped))
 }
 
 #[derive(Deserialize)]
@@ -355,6 +359,6 @@ pub async fn set_start_method(
     );
 
     Ok(crate::templates::schedule::seed_detail_dual_timeline(
-        &seed, &timing, current_year_i32, true, method,
+        &seed, &timing, current_year_i32, true, false, method,
     ))
 }

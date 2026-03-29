@@ -10,6 +10,7 @@ use super::ast::*;
 pub struct SeedContext<'a> {
     pub seed: &'a Seed,
     pub in_plan: bool,
+    pub is_skipped: bool,
     pub plan_method: Option<&'a str>,
     pub sowing_status: Option<&'a SowingStatus>,
     pub newest_purchase_year: Option<i64>,
@@ -30,8 +31,9 @@ pub fn matches(filter: &Filter, ctx: &SeedContext) -> bool {
         Filter::Organic => ctx.seed.is_organic,
         Filter::Heirloom => ctx.seed.is_heirloom,
 
-        Filter::InPlan => ctx.in_plan,
-        Filter::Plan(method) => {
+        Filter::Plan(None) => ctx.in_plan,
+        Filter::Plan(Some(s)) if s.eq_ignore_ascii_case("skipped") => ctx.is_skipped,
+        Filter::Plan(Some(method)) => {
             ctx.in_plan && ctx.plan_method.map_or(false, |m| contains_ci(m, method))
         }
 
@@ -238,6 +240,7 @@ mod tests {
         SeedContext {
             seed,
             in_plan: true,
+            is_skipped: false,
             plan_method: Some("indoor"),
             sowing_status: None,
             newest_purchase_year: Some(2025),
@@ -264,25 +267,20 @@ mod tests {
     }
 
     #[test]
-    fn test_in_plan() {
+    fn test_plan() {
         let seed = make_seed();
         let ctx = make_ctx(&seed);
-        assert!(matches(&Filter::InPlan, &ctx));
-    }
-
-    #[test]
-    fn test_plan_method() {
-        let seed = make_seed();
-        let ctx = make_ctx(&seed);
-        assert!(matches(&Filter::Plan("indoor".into()), &ctx));
-        assert!(!matches(&Filter::Plan("outdoor".into()), &ctx));
+        assert!(matches(&Filter::Plan(None), &ctx));
+        assert!(matches(&Filter::Plan(Some("indoor".into())), &ctx));
+        assert!(!matches(&Filter::Plan(Some("outdoor".into())), &ctx));
+        assert!(!matches(&Filter::Plan(Some("skipped".into())), &ctx));
     }
 
     #[test]
     fn test_and_or_not() {
         let seed = make_seed();
         let ctx = make_ctx(&seed);
-        assert!(matches(&Filter::And(vec![Filter::Organic, Filter::InPlan]), &ctx));
+        assert!(matches(&Filter::And(vec![Filter::Organic, Filter::Plan(None)]), &ctx));
         assert!(!matches(&Filter::And(vec![Filter::Organic, Filter::Heirloom]), &ctx));
         assert!(matches(&Filter::Or(vec![Filter::Heirloom, Filter::Organic]), &ctx));
         assert!(matches(&Filter::Not(Box::new(Filter::Heirloom)), &ctx));

@@ -15,8 +15,10 @@ struct SeedData {
     newest_purchases: HashMap<i64, i64>,
     purchase_counts: HashMap<i64, i64>,
     planned_seeds: HashSet<i64>,
+    skipped_seeds: HashSet<i64>,
     plan_methods: HashMap<i64, Option<String>>,
     sowing_statuses: HashMap<i64, SowingStatus>,
+    thumbnails: HashMap<i64, String>,
     today: NaiveDate,
     current_year: i32,
 }
@@ -37,10 +39,18 @@ async fn load_seed_data(state: &AppState) -> Result<SeedData, AppError> {
         .await?
         .into_iter()
         .collect();
+    let skipped_seeds: HashSet<i64> = queries::skipped_seed_ids(&state.db, current_year as i64)
+        .await?
+        .into_iter()
+        .collect();
     let plan_methods: HashMap<i64, Option<String>> = queries::list_season_plans(&state.db, current_year as i64)
         .await?
         .into_iter()
         .map(|p| (p.seed_id, p.start_method))
+        .collect();
+    let thumbnails: HashMap<i64, String> = queries::first_image_per_seed(&state.db)
+        .await?
+        .into_iter()
         .collect();
     let sowing_statuses: HashMap<i64, SowingStatus> = seeds.iter()
         .filter_map(|seed| {
@@ -61,8 +71,10 @@ async fn load_seed_data(state: &AppState) -> Result<SeedData, AppError> {
         newest_purchases,
         purchase_counts,
         planned_seeds,
+        skipped_seeds,
         plan_methods,
         sowing_statuses,
+        thumbnails,
         today,
         current_year,
     })
@@ -70,7 +82,12 @@ async fn load_seed_data(state: &AppState) -> Result<SeedData, AppError> {
 
 pub async fn home(State(state): State<AppState>) -> Result<Markup, AppError> {
     let data = load_seed_data(&state).await?;
-    Ok(home_page(&data.seeds, &data.newest_purchases, &data.purchase_counts, &data.planned_seeds, &data.sowing_statuses))
+    // Hide skipped seeds from the default listing
+    let visible_seeds: Vec<Seed> = data.seeds.iter()
+        .filter(|s| !data.skipped_seeds.contains(&s.id))
+        .cloned()
+        .collect();
+    Ok(home_page(&visible_seeds, &data.newest_purchases, &data.purchase_counts, &data.planned_seeds, &data.skipped_seeds, &data.sowing_statuses, &data.thumbnails))
 }
 
 #[derive(serde::Deserialize)]
@@ -87,13 +104,23 @@ pub async fn search(
 
     let query = search::parse_query(&params.q);
 
+    // Determine whether to include skipped seeds in results
+    let include_skipped = match &query {
+        Ok(SearchQuery::SExp(filter)) => filter.references_skipped(),
+        _ => false,
+    };
+
     let (filtered_seeds, error_msg) = match query {
         Ok(SearchQuery::Plaintext(ref q)) if q.is_empty() => {
-            (data.seeds.clone(), None)
+            let visible: Vec<Seed> = data.seeds.iter()
+                .filter(|s| !data.skipped_seeds.contains(&s.id))
+                .cloned()
+                .collect();
+            (visible, None)
         }
         Ok(SearchQuery::Plaintext(ref q)) => {
             let filtered: Vec<Seed> = data.seeds.iter()
-                .filter(|s| s.title.to_lowercase().contains(q))
+                .filter(|s| !data.skipped_seeds.contains(&s.id) && s.title.to_lowercase().contains(q))
                 .cloned()
                 .collect();
             (filtered, None)
@@ -101,9 +128,14 @@ pub async fn search(
         Ok(SearchQuery::SExp(ref filter)) => {
             let filtered: Vec<Seed> = data.seeds.iter()
                 .filter(|seed| {
+                    // Hide skipped unless query explicitly references them
+                    if !include_skipped && data.skipped_seeds.contains(&seed.id) {
+                        return false;
+                    }
                     let ctx = SeedContext {
                         seed,
                         in_plan: data.planned_seeds.contains(&seed.id),
+                        is_skipped: data.skipped_seeds.contains(&seed.id),
                         plan_method: data.plan_methods.get(&seed.id)
                             .and_then(|m| m.as_deref()),
                         sowing_status: data.sowing_statuses.get(&seed.id),
@@ -118,8 +150,12 @@ pub async fn search(
             (filtered, None)
         }
         Err(e) => {
-            // On parse error, show all seeds with a warning
-            (data.seeds.clone(), Some(e))
+            // On parse error, show all seeds (minus skipped) with a warning
+            let visible: Vec<Seed> = data.seeds.iter()
+                .filter(|s| !data.skipped_seeds.contains(&s.id))
+                .cloned()
+                .collect();
+            (visible, Some(e))
         }
     };
 
@@ -128,7 +164,9 @@ pub async fn search(
         &data.newest_purchases,
         &data.purchase_counts,
         &data.planned_seeds,
+        &data.skipped_seeds,
         &data.sowing_statuses,
+        &data.thumbnails,
         error_msg.as_deref(),
     ))
 }
