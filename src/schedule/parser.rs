@@ -20,13 +20,18 @@ pub fn parse_planting_timing_from_fields(
     when_to_start_inside: Option<&str>,
 ) -> PlantingTiming {
     let mut timing = PlantingTiming::default();
+    let mut is_two_phase = false;
 
     // Parse indoor start timing
     if let Some(inside_text) = when_to_start_inside {
         let lower = inside_text.to_lowercase();
 
-        // Check if indoor start is recommended (must start with "RECOMMENDED")
-        if lower.starts_with("recommended.") || lower.starts_with("recommended:") {
+        // Check if indoor start is recommended (starts with "RECOMMENDED" followed by
+        // punctuation or space, but not "not recommended")
+        if !lower.contains("not recommended")
+            && (lower.starts_with("recommended.") || lower.starts_with("recommended:")
+                || lower.starts_with("recommended "))
+        {
             timing.indoor_start_recommended = true;
         }
 
@@ -35,6 +40,7 @@ pub fn parse_planting_timing_from_fields(
             // Explicitly not recommended, skip indoor parsing
         } else if lower.contains("before transplanting") || lower.contains("before transplant") {
             // Two-phase warm season: "4 to 6 weeks before transplanting"
+            is_two_phase = true;
             if let Some((_, larger)) = extract_weeks_range(&lower, "before transplanting")
                 .or_else(|| extract_weeks_range(&lower, "before transplant"))
             {
@@ -85,6 +91,27 @@ pub fn parse_planting_timing_from_fields(
         {
             // Single-phase indoor start: "6 to 8 weeks before your average last frost date"
             timing.start_indoors_weeks_before = Some(larger);
+
+            // Check for a second "before frost" phrase for transplant timing, e.g.:
+            // "8 to 10 weeks before your average last frost date; transplant 4 to 6 weeks
+            //  before your average last frost date."
+            if lower.contains("transplant") {
+                // Find the transplant-related "before frost" by searching after the word "transplant"
+                if let Some(tp_pos) = lower.find("transplant") {
+                    let after_transplant = &lower[tp_pos..];
+                    if let Some((_, tp_larger)) = extract_weeks_range(after_transplant, "before your average last frost")
+                        .or_else(|| extract_weeks_range(after_transplant, "before average last frost"))
+                        .or_else(|| extract_weeks_range(after_transplant, "before last frost"))
+                    {
+                        timing.transplant_weeks_relative = Some(-(tp_larger as i8));
+                    } else if let Some((smaller, _)) = extract_weeks_range(after_transplant, "after your average last frost")
+                        .or_else(|| extract_weeks_range(after_transplant, "after average last frost"))
+                        .or_else(|| extract_weeks_range(after_transplant, "after last frost"))
+                    {
+                        timing.transplant_weeks_relative = Some(smaller as i8);
+                    }
+                }
+            }
         }
     }
 
@@ -96,15 +123,16 @@ pub fn parse_planting_timing_from_fields(
             .or_else(|| extract_weeks_range(&lower, "after average last frost"))
             .or_else(|| extract_weeks_range(&lower, "after last frost"))
         {
-            if timing.start_indoors_weeks_before.is_some() && timing.transplant_weeks_relative.is_none() {
-                // If we have indoor start but no transplant yet from the inside text,
-                // and the outside text says "after frost", this might be the transplant timing
-                // for a two-phase crop, OR it could be a direct sow option.
-                // If indoor is recommended, treat this as direct sow alternative.
-                timing.direct_sow_weeks_relative = Some(smaller as i8);
-            } else if timing.transplant_weeks_relative.is_none() && timing.start_indoors_weeks_before.is_some() {
+            if is_two_phase && timing.transplant_weeks_relative.is_none() {
+                // Two-phase crop (inside text said "before transplanting") but the inside
+                // text didn't give frost-relative transplant timing. The outside "after frost"
+                // is the transplant date, not direct sow.
                 timing.transplant_weeks_relative = Some(smaller as i8);
+            } else if timing.transplant_weeks_relative.is_some() || timing.start_indoors_weeks_before.is_none() {
+                // Either transplant already set, or no indoor start — this is direct sow
+                timing.direct_sow_weeks_relative = Some(smaller as i8);
             } else {
+                // Indoor start exists (single-phase) but no transplant — direct sow alternative
                 timing.direct_sow_weeks_relative = Some(smaller as i8);
             }
         } else if let Some((_, larger)) = extract_weeks_range(&lower, "before your average last frost")
@@ -310,6 +338,483 @@ mod tests {
     fn test_fields_none() {
         let timing = parse_planting_timing_from_fields(None, None);
         assert_eq!(timing, PlantingTiming::default());
+    }
+
+    // ================================================================
+    // Full database audit tests — one per seed entry
+    // ================================================================
+
+    #[test]
+    fn test_db_01_sugar_daddy_snap_pea() {
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED.   4 to 6 weeks before your average last frost   date, when soil temperature is at least   40°F, ideally 60°-80°F, and again 10 to 12   weeks before your average first frost date.   In mild climates, sow in fall or winter for   winter harvest. Best grown in temperatures   less than 85°F."),
+            Some("Not Recommended"),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, None);
+        assert_eq!(timing.transplant_weeks_relative, None);
+        assert_eq!(timing.direct_sow_weeks_relative, Some(-6));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_02_danvers_carrot() {
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 2 to 4 weeks before your average last frost date, and when soil temperature is at least 45°F, ideally 60°–85°F. Successive Sowings: Every 3 weeks until 10 to 12 weeks before your average first fall frost date. In very warm climates, carrots are grown primarily in fall, winter, and spring."),
+            Some("Not recommended; root disturbance stunts growth."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, None);
+        assert_eq!(timing.direct_sow_weeks_relative, Some(-4));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_03_tendersweet_carrot() {
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 2 to 4 weeks before your average last frost date, and when soil temperature is at least 45°F, ideally 60°–85°F. Successive Sowings: Every 3 weeks until 10 to 12 weeks before your average first fall frost date. In very warm climates, carrots are grown primarily in fall, winter, and spring."),
+            Some("Not recommended; root disturbance stunts growth."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, None);
+        assert_eq!(timing.direct_sow_weeks_relative, Some(-4));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_04_merengo_celery() {
+        let timing = parse_planting_timing_from_fields(
+            Some("Recommended for mild climates only. 1 to 2 weeks before your average last frost date, and when soil temperature is at least 50°F, or in fall for cool-season harvest."),
+            Some("RECOMMENDED. 10 to 12 weeks before your average last frost date for spring harvest, or 10 to 12 weeks before transplanting outdoors for fall crop. Biodegradable pots minimize root disturbance at transplanting. Optimal soil temperature for germination is 70°-75°F."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(12));
+        assert_eq!(timing.transplant_weeks_relative, None);
+        assert_eq!(timing.direct_sow_weeks_relative, Some(-2));
+        assert!(timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_05_yellow_sweet_spanish_onion() {
+        let timing = parse_planting_timing_from_fields(
+            Some("4 to 6 weeks before your average last frost date, or as soon as soil can be worked; when soil temperature is at least 45°F."),
+            Some("RECOMMENDED. 10 to 12 weeks before your average last frost date. Transplant outdoors 4 to 6 weeks before your average last frost date. The earlier the start, the bigger the bulb. Ideal soil temperature is 60°–85°F."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(12));
+        // Transplant 4-6 weeks before frost = -6
+        assert_eq!(timing.transplant_weeks_relative, Some(-6));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(-6));
+        assert!(timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_06_moss_curled_parsley() {
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 4 to 6 weeks before your average last frost date, or as soon as the soil can be worked; when soil temperature is 50°–85°F."),
+            Some("6 to 8 weeks before your average last frost date."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(8));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(-6));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_07_king_richard_leek() {
+        let timing = parse_planting_timing_from_fields(
+            Some("2 to 4 weeks before your average last frost date for late summer harvest, late spring for fall harvest, and in Mild Climates, late summer for the following spring harvest. Soil temperature should be at least 40°F, ideally 60°–85°F."),
+            Some("RECOMMENDED. 8 to 10 weeks before your average last frost date."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(10));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(-4));
+        assert!(timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_08_red_pride_bush_tomato() {
+        let timing = parse_planting_timing_from_fields(
+            Some("For mild climates only: 1 to 2 weeks after your average last frost date, and when soil temperature is at least 60°F."),
+            Some("RECOMMENDED. 4 to 6 weeks before transplanting. Transplant when air temperature is 45°F or warmer, usually 1 to 2 weeks after your average last frost date. Ideal soil temperature for germination is 70°–90°F."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(6));
+        assert_eq!(timing.transplant_weeks_relative, Some(1));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(1));
+        assert!(timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_09_clancy_potato() {
+        let timing = parse_planting_timing_from_fields(
+            Some("Not recommended."),
+            Some("RECOMMENDED: 4 to 6 weeks before your average last frost date. In mild climates, start seeds in mid-summer for a fall crop. Ideal soil temperature for germination is 60°–70°F."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(6));
+        assert_eq!(timing.direct_sow_weeks_relative, None);
+        assert!(timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_10_honey_cream_sweet_corn() {
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 1 to 2 weeks after average last frost and when soil temperature is at least 60°F; ideally 65°-90°F."),
+            Some("Not recommended; roots sensitive to transplanting. Best results occur when seedlings are transplanted less than 2 weeks old."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, None);
+        assert_eq!(timing.direct_sow_weeks_relative, Some(1));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_11_contender_bush_bean() {
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 1 to 2 weeks after your average last frost date, and when soil temperature is at least 65°F, ideally 70°–85°F. Successive Sowings: Every 7 to 14 days up to 80 days before your average first fall frost date. NOTE: In very hot summer areas, skip sowing as high heat approaches; temperatures consistently above 90°F will prevent beans from forming."),
+            Some("Not recommended."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, None);
+        assert_eq!(timing.direct_sow_weeks_relative, Some(1));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_12_dwarf_blue_curled_kale() {
+        let timing = parse_planting_timing_from_fields(
+            Some("1 to 2 weeks before your average last frost date, when soil temperature is above 45°F for spring/summer crop; 10 to 12 weeks before your average first fall frost date for fall crop; and in mild climates, fall for very early spring crop."),
+            Some("RECOMMENDED: 4 to 6 weeks before your average last frost date. For a fall crop, start 12 to 14 weeks before your average first fall frost date, transplanting after 4 to 6 weeks. Ideal soil temperature for germination is 65°–85°F."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(6));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(-2));
+        assert!(timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_13_honeynut_winter_squash() {
+        // "Not recommended except..." causes indoor info to be dropped — acceptable
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 1 to 2 weeks after your average last frost date, and when soil temperature is 70°–85°F."),
+            Some("Not recommended except in very short growing seasons, 2 to 4 weeks before your average last frost date. Roots sensitive to disturbance; sow in 4\" biodegradable pots that can be planted directly into the ground. Transplant when soil temperature is at least 60°F."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, None);
+        assert_eq!(timing.direct_sow_weeks_relative, Some(1));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_14_pumpkin_on_a_stick() {
+        let timing = parse_planting_timing_from_fields(
+            Some("2 to 4 weeks after your average last frost date, when soil temperature is at least 70°F."),
+            Some("RECOMMENDED. 6 to 8 weeks before your average last frost date. Ideal soil temperature for germination is 80°–90°F. Transplant outdoors when the soil temperature is at least 60°F."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(8));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(2));
+        assert!(timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_15_zeolights_calendula() {
+        let timing = parse_planting_timing_from_fields(
+            Some("Cold Climates: 2 to 4 weeks before your average last frost date. Mild Climates: Early spring for summer bloom and late summer for winter bloom. Ideal soil temperature for germination is 68°–85°F."),
+            Some("4 to 6 weeks before your average last frost date; recommended for cold climates."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(6));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(-4));
+        // "recommended" is not at start of inside text
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_16_blue_boy_bachelors_button() {
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 1 to 2 weeks before your average last frost date, or in late summer/fall for blooms the following season. Mild Climates: Sow in fall for winter bloom."),
+            Some("4 to 6 weeks before your average last frost date. Not recommended; does not transplant well. Use biodegradable pots to avoid root disturbance."),
+        );
+        // "Not recommended" in inside text -> skip indoor
+        assert_eq!(timing.start_indoors_weeks_before, None);
+        assert_eq!(timing.direct_sow_weeks_relative, Some(-2));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_17_common_oregano() {
+        let timing = parse_planting_timing_from_fields(
+            Some("2 to 4 weeks after your average last frost date, when temperatures are warm and settled, and as late as 2 months before your first fall frost date."),
+            Some("RECOMMENDED. 6 to 8 weeks before your average last frost date. Optimal soil temperature for germination is 70°–78°F."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(8));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(2));
+        assert!(timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_18_tetra_dill() {
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 1 to 2 weeks before your average last frost date, and when soil temperature is at least 60°F. Successive Sowings: Every 2 to 3 weeks to ensure a continual fresh supply of foliage and seeds."),
+            Some("8 to 10 weeks before your average last frost date. Sow in biodegradable pots that can be planted directly in the ground."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(10));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(-2));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_19_common_chives() {
+        let timing = parse_planting_timing_from_fields(
+            Some("4 to 6 weeks before your average last frost date, when soil temperature is at least 45°F, ideally 60°–70°F; or as late as 2 months before your average first fall frost date."),
+            Some("6 to 8 weeks before your average last frost date."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(8));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(-6));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_20_italian_genovese_basil() {
+        // Two-phase: "before transplanting outside" but no frost-relative timing in inside text.
+        // Outside "after frost" should become transplant, not direct_sow.
+        let timing = parse_planting_timing_from_fields(
+            Some("1 to 2 weeks after your average last frost date, and when soil temperature is at least 60°F, ideally 65°–85°F. Successive Sowings: We recommend 3 or 4 successive sowings every 3 weeks after initial sowing."),
+            Some("RECOMMENDED. 4 to 6 weeks before transplanting outside. Transplant when your nighttime temperatures are above 50°F."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(6));
+        assert_eq!(timing.transplant_weeks_relative, Some(1));
+        assert!(timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_21_sweet_thai_basil() {
+        let timing = parse_planting_timing_from_fields(
+            Some("1 to 2 weeks after your average last frost date, and when soil temperature is at least 60°F, ideally 65°–85°F. Successive Sowings: We recommend 3 or 4 successive sowings every 3 weeks after initial sowing."),
+            Some("RECOMMENDED. 4 to 6 weeks before transplanting outside. Transplant when your nighttime temperatures are above 50°F."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(6));
+        assert_eq!(timing.transplant_weeks_relative, Some(1));
+        assert!(timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_22_sugar_baby_watermelon() {
+        // "Not recommended except..." -> indoor skipped
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 1 to 2 weeks after your average last frost date, and when soil temperature is 70°–90°F."),
+            Some("Not recommended except in very short growing seasons, 2 to 4 weeks before transplanting. Roots are sensitive to disturbance; sow in biodegradable pots that can be planted directly into the ground. Transplant when soil temperature is at least 60°F."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, None);
+        assert_eq!(timing.direct_sow_weeks_relative, Some(1));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_23_beefsteak_pole_tomato() {
+        let timing = parse_planting_timing_from_fields(
+            Some("For mild climates only: 1 to 2 weeks after your average last frost date, and when soil temperature is at least 60°F."),
+            Some("RECOMMENDED. 4 to 6 weeks before transplanting. Transplant when air temperature is 45°F or warmer, usually 1 to 2 weeks after your average last frost date. Ideal soil temperature for germination is 70°–90°F."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(6));
+        assert_eq!(timing.transplant_weeks_relative, Some(1));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(1));
+        assert!(timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_24_gardeners_delight_cherry_tomato() {
+        let timing = parse_planting_timing_from_fields(
+            Some("For Mild Climates only: 1 to 2 weeks after your average last frost date, and when soil temperature is at least 60°F."),
+            Some("RECOMMENDED. 4 to 6 weeks before transplanting. Transplant when air temperature is 45°F or warmer, usually 1 to 2 weeks after your average last frost date. Ideal soil temperature for germination is 70°–90°F."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(6));
+        assert_eq!(timing.transplant_weeks_relative, Some(1));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(1));
+        assert!(timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_25_grande_rio_verde_tomatillo() {
+        let timing = parse_planting_timing_from_fields(
+            Some("2 to 4 weeks after your average last frost date, and when soil temperature is at least 60°F."),
+            Some("RECOMMENDED. 4 to 6 weeks before your average last frost date. Ideal soil temperature for germination is 80° – 85°F."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(6));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(2));
+        assert!(timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_26_waltham_butternut_winter_squash() {
+        // "Not recommended except..." -> indoor skipped
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 1 to 2 weeks after your average last frost date, and when soil temperature is 70°–85°F."),
+            Some("Not recommended except in very short growing seasons, 2 to 4 weeks before your average last frost date. Roots sensitive to disturbance; sow in 4\" biodegradable pots that can be planted directly into the ground. Transplant when soil temperature is at least 60°F."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, None);
+        assert_eq!(timing.direct_sow_weeks_relative, Some(1));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_27_table_king_acorn_winter_squash() {
+        // "Not recommended except..." -> indoor skipped
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 1 to 2 weeks after your average last frost date, and when soil temperature is 70°–85°F."),
+            Some("Not recommended except in very short growing seasons, 2 to 4 weeks before transplanting. Roots are sensitive to disturbance; sow in biodegradable pots that can be planted directly into the ground. Transplant when soil temperature is at least 60°F."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, None);
+        assert_eq!(timing.direct_sow_weeks_relative, Some(1));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_28_fireball_blend_zinnia() {
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 1 to 2 weeks after your average last frost date."),
+            Some("4 to 6 weeks before your average last frost date. Transplant outdoors after last frost. Zinnias do not benefit from being sown early; wait for warmer weather"),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(6));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(1));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_29_sunspot_dwarf_sunflower() {
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 1 to 2 weeks after your average last frost date."),
+            Some("2 to 4 weeks before your average last frost date. Sunflowers are senstive to root disturbance; sow in biodegradable pots that can be planted directly in the ground."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(4));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(1));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_30_sensation_blend_cosmos() {
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 1 to 2 weeks after your average last frost date, and when soil temperature is at least 60°F."),
+            Some("4 to 6 weeks before your average last frost date."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(6));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(1));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_31_early_prolific_straightneck_summer_squash() {
+        // "Not recommended except..." -> indoor skipped
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 1 to 2 weeks after your average last frost date, and when soil temperature is 70°–85°F."),
+            Some("Not recommended except in very short growing seasons, 2 to 4 weeks before transplanting. Roots are sensitive to disturbance; sow in biodegradable pots that can be planted directly into the ground. Transplant when soil temperature is at least 60°F."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, None);
+        assert_eq!(timing.direct_sow_weeks_relative, Some(1));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_32_black_beauty_summer_squash() {
+        // Same pattern as #31
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 1 to 2 weeks after your average last frost date, and when soil temperature is 70°–85°F."),
+            Some("Not recommended except in very short growing seasons, 2 to 4 weeks before transplanting. Roots are sensitive to disturbance; sow in biodegradable pots that can be planted directly into the ground. Transplant when soil temperature is at least 60°F."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, None);
+        assert_eq!(timing.direct_sow_weeks_relative, Some(1));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_33_red_warty_thing_pumpkin() {
+        // "Not recommended except..." -> indoor skipped
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 2 to 4 weeks after your average last frost date, and when soil temperature is 70°–90°F."),
+            Some("Not recommended except in very short growing seasons, 2 to 4 weeks before your average last frost date. Sow in biodegradable pots that can be planted directly in the ground. Transplant after your average last frost date, when weather is warm and settled."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, None);
+        assert_eq!(timing.direct_sow_weeks_relative, Some(2));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_34_tokyo_long_white_bunching_onion() {
+        // Inside text has TWO "before frost" phrases: indoor start + transplant timing
+        let timing = parse_planting_timing_from_fields(
+            Some("4 to 6 weeks before your average last frost date or as soon as the soil temperature reaches 45°F, ideally 60°–85°F, and every 2 to 4 weeks recommended for continuous production. In Mild Climates, sow in fall for spring harvest."),
+            Some("8 to 10 weeks before your average last frost date; transplant 4 to 6 weeks before your average last frost date."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(10));
+        assert_eq!(timing.transplant_weeks_relative, Some(-6));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(-6));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_35_sweet_banana_sweet_pepper() {
+        let timing = parse_planting_timing_from_fields(
+            Some("For Mild Climates only: 2 to 4 weeks after average last frost, when soil temperature is at least 70°F."),
+            Some("RECOMMENDED. 8 to 10 weeks before transplanting. Ideal soil temperature for germination is 70°–90°F. Transplant seedlings outside 2 to 4 weeks after your average last frost date, and when daytime temperatures are at least 70°F, and nighttime temperatures are at least 55°F. Mild Climates: May be sown in late summer for fall/winter crop."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(10));
+        assert_eq!(timing.transplant_weeks_relative, Some(2));
+        assert!(timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_36_hearts_of_gold_cantaloupe() {
+        // "Recommended for short-season areas." — starts with "recommended " (space)
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 1 to 2 weeks after your average last frost date, and when soil temperature is 70°–90°F."),
+            Some("Recommended for short-season areas. 2 to 4 weeks before transplanting within 2 weeks after your average last frost date. Sow into biodegradable pots that can be directly planted in the ground; roots are sensitive to disturbance."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(4));
+        assert_eq!(timing.transplant_weeks_relative, Some(2));
+        assert!(timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_37_buttercrunch_butterhead_lettuce() {
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 2 to 4 weeks before your average last frost date, and when soil temperature is at least 40°F, ideally 60°–70°F. Successive Sowings: Every 3 weeks until 4 to 6 weeks before your average first fall frost date. Mild Climates: Sow in fall and winter for cool season harvests."),
+            Some("4 to 6 weeks before your average last frost date, and in summer when soil temperatures are too warm (above 80°F) to germinate lettuce seed."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(6));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(-4));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_38_marketmore_cucumber() {
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 1 to 2 weeks after your average last frost date, and when soil temperature is at least 60°F, ideally 70°–90°F."),
+            Some("2 to 4 weeks before your average last frost date. Cucumbers are sensitive to root disturbance; sow in biodegradable pots."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(4));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(1));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_39_waltham_29_broccoli() {
+        let timing = parse_planting_timing_from_fields(
+            Some("4 to 6 weeks before your average last frost date, or when soil temperature is at least 40°F, ideally 60°-85°F. Also in late summer for fall harvest. Mild Climates: Best sown in fall or winter for cool-season harvest."),
+            Some("RECOMMENDED. 4 to 6 weeks before transplanting outside after your average last frost date, or 12 weeks before your average first fall frost date. In mild climates, sow in fall for harvest in late winter and early spring. Ideal soil temperature for germination is 70°–85°?, cooler (60°F) growing temperatures thereafter."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(6));
+        assert_eq!(timing.transplant_weeks_relative, Some(0));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(-6));
+        assert!(timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_40_early_wonder_beet() {
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 2 to 4 weeks before your average last frost date, when soil temperature is at least 45°F, ideally 60°–85°F, for early summer crop. 6 to 8 weeks before your average first fall frost date for late summer/fall crop. Mild Climates: Sow fall through winter."),
+            Some("Not recommended. Root disturbance delays maturity."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, None);
+        assert_eq!(timing.direct_sow_weeks_relative, Some(-4));
+        assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_db_41_parsley_italian_giant_org() {
+        let timing = parse_planting_timing_from_fields(
+            Some("RECOMMENDED. 4 to 6 weeks before your average last frost date, or as soon as the soil can be worked; when soil temperature is 50º–85ºF."),
+            Some("6 to 8 weeks before your average last frost date."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(8));
+        assert_eq!(timing.direct_sow_weeks_relative, Some(-6));
+        assert!(!timing.indoor_start_recommended);
     }
 
     // Legacy parser tests
