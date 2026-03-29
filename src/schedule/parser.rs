@@ -41,12 +41,43 @@ pub fn parse_planting_timing_from_fields(
                 timing.start_indoors_weeks_before = Some(larger);
             }
 
-            // Look for transplant timing in the same text: "usually X to Y weeks after your average last frost"
-            if let Some((smaller, _)) = extract_weeks_range(&lower, "after your average last frost")
-                .or_else(|| extract_weeks_range(&lower, "after average last frost"))
-                .or_else(|| extract_weeks_range(&lower, "after last frost"))
-            {
-                timing.transplant_weeks_relative = Some(smaller as i8);
+            // Look for transplant timing: "usually X to Y weeks after your average last frost"
+            // Be careful: in text like "4 to 6 weeks before transplanting outside after your
+            // average last frost date", the "4 to 6 weeks" belongs to "before transplanting",
+            // NOT "after frost". The transplant date is simply at the last frost date (week 0).
+            //
+            // We detect this by checking whether there's a distinct "weeks" token between the
+            // "before transplanting" phrase and the "after frost" phrase. If not, the only
+            // weeks value in the text belongs to "before transplanting".
+            let after_frost_phrase = lower.find("after your average last frost")
+                .or_else(|| lower.find("after average last frost"))
+                .or_else(|| lower.find("after last frost"));
+            let transplant_phrase_end = lower.find("before transplanting")
+                .map(|p| p + "before transplanting".len())
+                .or_else(|| lower.find("before transplant").map(|p| p + "before transplant".len()));
+
+            if let (Some(frost_pos), Some(tp_end)) = (after_frost_phrase, transplant_phrase_end) {
+                if frost_pos > tp_end {
+                    // "after frost" comes after "before transplanting" — check the gap
+                    let gap = &lower[tp_end..frost_pos];
+                    if gap.contains("weeks") {
+                        // Distinct "X weeks after frost" phrase exists — parse it
+                        if let Some((smaller, _)) = extract_weeks_range(&lower, &lower[frost_pos..frost_pos + 5]) {
+                            timing.transplant_weeks_relative = Some(smaller as i8);
+                        }
+                    } else {
+                        // No separate weeks for "after frost" — transplant is at frost
+                        timing.transplant_weeks_relative = Some(0);
+                    }
+                }
+            } else if after_frost_phrase.is_some() {
+                // No "before transplanting" phrase, just "after frost" — parse normally
+                if let Some((smaller, _)) = extract_weeks_range(&lower, "after your average last frost")
+                    .or_else(|| extract_weeks_range(&lower, "after average last frost"))
+                    .or_else(|| extract_weeks_range(&lower, "after last frost"))
+                {
+                    timing.transplant_weeks_relative = Some(smaller as i8);
+                }
             }
         } else if let Some((_, larger)) = extract_weeks_range(&lower, "before your average last frost")
             .or_else(|| extract_weeks_range(&lower, "before average last frost"))
@@ -260,6 +291,19 @@ mod tests {
         assert_eq!(timing.direct_sow_weeks_relative, Some(-4));
         // Outdoor text says "RECOMMENDED", indoor does not
         assert!(!timing.indoor_start_recommended);
+    }
+
+    #[test]
+    fn test_fields_broccoli_transplant_after_frost() {
+        // "4 to 6 weeks before transplanting outside after your average last frost date"
+        // means: transplant at frost, start indoors 4-6 weeks before that
+        let timing = parse_planting_timing_from_fields(
+            None,
+            Some("RECOMMENDED. 4 to 6 weeks before transplanting outside after your average last frost date, or 12 weeks before your average first fall frost date. In mild climates, sow in fall for harvest in late winter and early spring."),
+        );
+        assert_eq!(timing.start_indoors_weeks_before, Some(6));
+        assert_eq!(timing.transplant_weeks_relative, Some(0));
+        assert!(timing.indoor_start_recommended);
     }
 
     #[test]
