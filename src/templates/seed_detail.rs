@@ -242,25 +242,53 @@ pub fn seed_detail_page(seed: &Seed, images: &[SeedImage], purchases: &[SeedPurc
             // Planting events log
             (seed_events_section(seed, events, current_year))
 
-            // Purchase history & viability section
-            (seed_purchases_section(seed, purchases))
-
-            // Viability warnings and sow multiplier
-            @if !purchases.is_empty() {
-                @let newest_purchase_year = purchases.iter().map(|p| p.purchase_year).max();
-                @let newest_viability = estimate_viability(
-                    seed.subcategory.as_deref(),
-                    seed.category.as_deref(),
-                    newest_purchase_year,
-                );
-                @if let Some(ref est) = newest_viability {
-                    @if let Some(warning) = est.warning_message() {
-                        div.viability-warning { (warning) }
-                    }
-                    @if let Some(mult) = est.sow_multiplier() {
-                        div.sow-suggestion {
-                            "Sow " (format!("{:.1}", mult)) "x the normal amount to compensate for reduced germination (" (est.percentage) "% viability)."
+            // About section
+            @if seed.category.is_some() || seed.subcategory.is_some() || seed.description.is_some() {
+                section.detail-section {
+                    h2 { "About" }
+                    dl.info-list {
+                        @if let Some(ref cat) = seed.category {
+                            dt { "Category" }
+                            dd { (cat) }
                         }
+                        @if let Some(ref subcat) = seed.subcategory {
+                            dt { "Subcategory" }
+                            dd { (subcat) }
+                        }
+                    }
+                    @if let Some(ref desc) = seed.description {
+                        div.seed-description {
+                            (PreEscaped(desc))
+                        }
+                    }
+                }
+            }
+
+            // Sowing & Planting section
+            @if seed.when_to_sow_outside.is_some() || seed.when_to_start_inside.is_some()
+                || seed.sow_depth.is_some() || seed.plant_spacing.is_some()
+                || seed.row_spacing.is_some() || seed.thinning.is_some()
+                || seed.days_to_emerge.is_some() || seed.germination_info.is_some() {
+                section.detail-section {
+                    h2 { "Sowing & Planting" }
+                    dl.info-list {
+                        (detail_item("When to Start Inside", &seed.when_to_start_inside))
+                        (detail_item("When to Sow Outside", &seed.when_to_sow_outside))
+                        (detail_item("Days to Emerge", &seed.days_to_emerge))
+                        (detail_item("Seed Depth", &seed.sow_depth))
+                        (detail_item("Seed Spacing", &seed.plant_spacing))
+                        (detail_item("Row Spacing", &seed.row_spacing))
+                        (detail_item("Thinning", &seed.thinning))
+                    }
+                }
+            }
+
+            // Harvest section
+            @if seed.harvest_instructions.is_some() {
+                section.detail-section {
+                    h2 { "Harvest" }
+                    @if let Some(ref harvest) = seed.harvest_instructions {
+                        p { (harvest) }
                     }
                 }
             }
@@ -299,63 +327,12 @@ pub fn seed_detail_page(seed: &Seed, images: &[SeedImage], purchases: &[SeedPurc
                 }
             }
 
-            // Sowing & Planting section
-            @if seed.when_to_sow_outside.is_some() || seed.when_to_start_inside.is_some()
-                || seed.sow_depth.is_some() || seed.plant_spacing.is_some()
-                || seed.row_spacing.is_some() || seed.thinning.is_some()
-                || seed.days_to_emerge.is_some() || seed.germination_info.is_some() {
-                section.detail-section {
-                    h2 { "Sowing & Planting" }
-                    dl.info-list {
-                        (detail_item("When to Start Inside", &seed.when_to_start_inside))
-                        (detail_item("When to Sow Outside", &seed.when_to_sow_outside))
-                        (detail_item("Days to Emerge", &seed.days_to_emerge))
-                        (detail_item("Seed Depth", &seed.sow_depth))
-                        (detail_item("Seed Spacing", &seed.plant_spacing))
-                        (detail_item("Row Spacing", &seed.row_spacing))
-                        (detail_item("Thinning", &seed.thinning))
-                    }
-                }
-            }
-
-            // Harvest section
-            @if seed.harvest_instructions.is_some() {
-                section.detail-section {
-                    h2 { "Harvest" }
-                    @if let Some(ref harvest) = seed.harvest_instructions {
-                        p { (harvest) }
-                    }
-                }
-            }
-
             // Special Care section
             @if seed.special_care.is_some() {
                 section.detail-section {
                     h2 { "Special Care" }
                     @if let Some(ref care) = seed.special_care {
                         p { (care) }
-                    }
-                }
-            }
-
-            // About section
-            @if seed.category.is_some() || seed.subcategory.is_some() || seed.description.is_some() {
-                section.detail-section {
-                    h2 { "About" }
-                    dl.info-list {
-                        @if let Some(ref cat) = seed.category {
-                            dt { "Category" }
-                            dd { (cat) }
-                        }
-                        @if let Some(ref subcat) = seed.subcategory {
-                            dt { "Subcategory" }
-                            dd { (subcat) }
-                        }
-                    }
-                    @if let Some(ref desc) = seed.description {
-                        div.seed-description {
-                            (PreEscaped(desc))
-                        }
                     }
                 }
             }
