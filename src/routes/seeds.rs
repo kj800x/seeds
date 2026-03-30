@@ -11,7 +11,7 @@ use crate::db::queries;
 use crate::error::AppError;
 use crate::scraper;
 use crate::templates::home::plan_toggle_button;
-use crate::templates::seed_detail::{seed_detail_page, seed_purchases_section};
+use crate::templates::seed_detail::{seed_detail_page, seed_events_section, seed_purchases_section};
 
 #[derive(Deserialize)]
 pub struct AddSeedInput {
@@ -31,6 +31,7 @@ pub async fn seed_detail(
     let purchases = queries::list_purchases_for_seed(&state.db, id).await?;
 
     let current_year = chrono::Local::now().year() as i64;
+    let events = queries::list_events_for_seed(&state.db, id, current_year).await?;
     let in_plan = queries::is_seed_in_plan(&state.db, id, current_year).await?;
     let is_skipped = queries::is_seed_skipped(&state.db, id, current_year).await?;
     let plan_start_method = if in_plan {
@@ -39,7 +40,7 @@ pub async fn seed_detail(
         None
     };
 
-    Ok(seed_detail_page(&seed, &images, &purchases, in_plan, is_skipped, plan_start_method.as_deref()))
+    Ok(seed_detail_page(&seed, &images, &purchases, &events, in_plan, is_skipped, plan_start_method.as_deref()))
 }
 
 pub async fn add_seed(
@@ -223,6 +224,144 @@ pub async fn purchases_fragment(
     Ok(seed_purchases_section(&seed, &purchases))
 }
 
+// --- Planting Event handlers ---
+
+#[derive(Deserialize)]
+pub struct AddEventInput {
+    #[serde(default)]
+    pub event_type: String,
+    #[serde(default)]
+    pub event_date: String,
+    #[serde(default)]
+    pub notes: String,
+}
+
+/// POST /seeds/{seed_id}/events - Add a planting event
+pub async fn add_event_handler(
+    State(state): State<AppState>,
+    Path(seed_id): Path<i64>,
+    Form(input): Form<AddEventInput>,
+) -> Result<Markup, AppError> {
+    let seed = queries::get_seed(&state.db, seed_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Seed {} not found", seed_id)))?;
+
+    let today = chrono::Local::now().date_naive();
+    let current_year = today.year() as i64;
+
+    let event_type = if input.event_type.is_empty() { "comment" } else { &input.event_type };
+    let event_date = if input.event_date.is_empty() {
+        today.format("%Y-%m-%d").to_string()
+    } else {
+        input.event_date.clone()
+    };
+    let notes = if input.notes.is_empty() { None } else { Some(input.notes.as_str()) };
+
+    queries::insert_event(&state.db, seed_id, current_year, event_type, &event_date, notes).await?;
+
+    let events = queries::list_events_for_seed(&state.db, seed_id, current_year).await?;
+    Ok(seed_events_section(&seed, &events, current_year as i32))
+}
+
+#[derive(Deserialize)]
+pub struct UpdateEventInput {
+    #[serde(default)]
+    pub event_type: String,
+    #[serde(default)]
+    pub event_date: String,
+    #[serde(default)]
+    pub notes: String,
+}
+
+/// PUT /seeds/{seed_id}/events/{event_id} - Update a planting event
+pub async fn update_event_handler(
+    State(state): State<AppState>,
+    Path((seed_id, event_id)): Path<(i64, i64)>,
+    Form(input): Form<UpdateEventInput>,
+) -> Result<Markup, AppError> {
+    let seed = queries::get_seed(&state.db, seed_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Seed {} not found", seed_id)))?;
+
+    let event_type = if input.event_type.is_empty() { "comment" } else { &input.event_type };
+    let notes = if input.notes.is_empty() { None } else { Some(input.notes.as_str()) };
+
+    queries::update_event(&state.db, event_id, event_type, &input.event_date, notes).await?;
+
+    let current_year = chrono::Local::now().year() as i64;
+    let events = queries::list_events_for_seed(&state.db, seed_id, current_year).await?;
+    Ok(seed_events_section(&seed, &events, current_year as i32))
+}
+
+/// DELETE /seeds/{seed_id}/events/{event_id} - Delete a planting event
+pub async fn delete_event_handler(
+    State(state): State<AppState>,
+    Path((seed_id, event_id)): Path<(i64, i64)>,
+) -> Result<Markup, AppError> {
+    let seed = queries::get_seed(&state.db, seed_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Seed {} not found", seed_id)))?;
+
+    queries::delete_event(&state.db, event_id).await?;
+
+    let current_year = chrono::Local::now().year() as i64;
+    let events = queries::list_events_for_seed(&state.db, seed_id, current_year).await?;
+    Ok(seed_events_section(&seed, &events, current_year as i32))
+}
+
+/// GET /seeds/{seed_id}/events/{event_id}/edit - Return edit form for an event
+pub async fn edit_event_form(
+    State(state): State<AppState>,
+    Path((seed_id, event_id)): Path<(i64, i64)>,
+) -> Result<Markup, AppError> {
+    let _seed = queries::get_seed(&state.db, seed_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Seed {} not found", seed_id)))?;
+
+    let event = queries::get_event(&state.db, event_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Event {} not found", event_id)))?;
+
+    use crate::templates::seed_detail::EVENT_TYPES;
+
+    Ok(html! {
+        div.event-entry.event-editing {
+            form hx-put=(format!("/seeds/{}/events/{}", seed_id, event_id))
+                 hx-target="#seed-events" hx-swap="outerHTML" {
+                input.event-message-input type="text" name="notes"
+                      value=[event.notes.as_deref()]
+                      placeholder="What happened?";
+                div.event-compose-options {
+                    input.event-date-input type="date" name="event_date" value=(event.event_date);
+                    select.event-type-select name="event_type" {
+                        @for (value, label) in EVENT_TYPES {
+                            option value=(value) selected[event.event_type == *value] { (label) }
+                        }
+                    }
+                    button type="submit" class="btn btn-save btn-sm" { "Save" }
+                    button type="button" class="btn btn-cancel btn-sm"
+                           hx-get=(format!("/seeds/{}/events", seed_id))
+                           hx-target="#seed-events" hx-swap="outerHTML" { "Cancel" }
+                }
+            }
+        }
+    })
+}
+
+/// GET /seeds/{seed_id}/events - Return the events section fragment
+pub async fn events_fragment(
+    State(state): State<AppState>,
+    Path(seed_id): Path<i64>,
+) -> Result<Markup, AppError> {
+    let seed = queries::get_seed(&state.db, seed_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Seed {} not found", seed_id)))?;
+
+    let current_year = chrono::Local::now().year() as i64;
+    let events = queries::list_events_for_seed(&state.db, seed_id, current_year).await?;
+    Ok(seed_events_section(&seed, &events, current_year as i32))
+}
+
 /// DELETE /seeds/{id} - Delete seed and redirect to list
 pub async fn delete_seed_handler(
     State(state): State<AppState>,
@@ -308,6 +447,8 @@ pub async fn toggle_plan(
         let indoor = crate::schedule::compute_indoor_timeline(&seed, &timing, current_year_i32);
         let outdoor = crate::schedule::compute_outdoor_timeline(&seed, &timing, current_year_i32);
 
+        let events = queries::list_events_for_seed(&state.db, seed_id, current_year).await?;
+
         if indoor.is_some() && outdoor.is_some() {
             let plan_start_method = if in_plan {
                 Some(queries::get_plan_start_method(&state.db, seed_id, current_year).await?.unwrap_or_default())
@@ -315,11 +456,11 @@ pub async fn toggle_plan(
                 None
             };
             return Ok(crate::templates::schedule::seed_detail_dual_timeline(
-                &seed, &timing, current_year_i32, in_plan, is_skipped, plan_start_method.as_deref(),
+                &seed, &timing, current_year_i32, in_plan, is_skipped, plan_start_method.as_deref(), &events,
             ));
         } else {
             return Ok(crate::templates::schedule::seed_detail_timeline(
-                &seed, &timing, current_year_i32, in_plan, is_skipped,
+                &seed, &timing, current_year_i32, in_plan, is_skipped, &events,
             ));
         }
     }
@@ -358,7 +499,9 @@ pub async fn set_start_method(
         seed.when_to_start_inside.as_deref(),
     );
 
+    let events = queries::list_events_for_seed(&state.db, seed_id, current_year).await?;
+
     Ok(crate::templates::schedule::seed_detail_dual_timeline(
-        &seed, &timing, current_year_i32, true, false, method,
+        &seed, &timing, current_year_i32, true, false, method, &events,
     ))
 }

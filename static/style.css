@@ -887,7 +887,8 @@ a:hover {
     padding: 6px 10px;
 }
 
-.purchase-notes-input {
+.purchase-notes-input,
+.event-notes-input {
     flex: 1;
     min-width: 150px;
     padding: 6px 10px;
@@ -899,10 +900,151 @@ a:hover {
     background-color: var(--color-cream);
 }
 
-.purchase-notes-input:focus {
+.purchase-notes-input:focus,
+.event-notes-input:focus {
     outline: none;
     border-color: var(--color-earth-green-light);
     box-shadow: 0 0 0 3px rgba(90, 122, 90, 0.15);
+}
+
+/* Planting Log */
+.event-compose {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.event-message-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    font-family: var(--font-stack);
+    color: var(--color-text);
+    background-color: var(--color-cream);
+}
+
+.event-message-input:focus {
+    outline: none;
+    border-color: var(--color-earth-green-light);
+    box-shadow: 0 0 0 3px rgba(90, 122, 90, 0.15);
+}
+
+.event-compose-options {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.event-date-input,
+.event-type-select {
+    padding: 5px 8px;
+    font-size: 0.82rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-family: var(--font-stack);
+    color: var(--color-text-muted);
+    background-color: var(--color-cream);
+}
+
+.event-date-input:focus,
+.event-type-select:focus {
+    outline: none;
+    border-color: var(--color-earth-green-light);
+    color: var(--color-text);
+}
+
+.add-event-form {
+    margin-bottom: 16px;
+}
+
+.events-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.event-entry {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--color-cream-dark);
+}
+
+.event-entry:last-child {
+    border-bottom: none;
+}
+
+.event-entry-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+}
+
+.event-badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: var(--radius-sm, 4px);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.event-comment { background: var(--color-cream-dark, #e5ddd4); color: var(--color-text-muted); }
+.event-sow_indoor { background: var(--color-sage-light, #e8f0e8); color: var(--color-earth-green-dark, #3d5a3d); }
+.event-sow_outdoor { background: #e5edd5; color: #4a6a2a; }
+.event-transplant { background: #e8e0f0; color: #5a3d7a; }
+.event-water { background: #deeef8; color: #2a5a8a; }
+.event-fertilize { background: #f0ead8; color: #7a6a2a; }
+.event-harvest { background: #fde8d8; color: #8a4a2a; }
+.event-observation { background: #e0eae8; color: #3a6a5a; }
+
+.event-date {
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+}
+
+.event-entry-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.event-entry:hover .event-entry-actions {
+    opacity: 1;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm, 4px);
+}
+
+.btn-icon:hover {
+    background: var(--color-cream-dark);
+    color: var(--color-text);
+}
+
+.btn-icon-delete:hover {
+    background: var(--color-red, #b91c1c);
+    color: white;
+}
+
+.event-entry-notes {
+    margin: 4px 0 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.event-editing {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--color-cream-dark);
 }
 
 /* Inline Edit Form for Purchases */
@@ -1206,6 +1348,37 @@ a:hover {
     z-index: 10;
 }
 
+.timeline-event-marker {
+    position: absolute;
+    top: 50%;
+    width: 10px;
+    height: 10px;
+    margin-left: -5px;
+    margin-top: -5px;
+    border-radius: 50%;
+    border: 2px solid white;
+    z-index: 15;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.event-marker-sow_indoor { background: var(--color-earth-green, #5a7a5a); }
+.event-marker-sow_outdoor { background: #4a6a2a; }
+.event-marker-transplant { background: #5a3d7a; }
+
+.key-date-done {
+    font-weight: 600;
+}
+
+.key-date-check {
+    color: var(--color-earth-green, #5a7a5a);
+    font-weight: 700;
+}
+
+.key-date-planned {
+    color: var(--color-text-muted);
+    font-size: 0.85em;
+}
+
 .timeline-frost {
     position: absolute;
     top: 0;
@@ -1273,25 +1446,47 @@ a:hover {
 }
 
 /* Dual timeline sections (indoor/outdoor) */
-.timeline-method-section {
+details.timeline-method-section {
     margin-bottom: 1.5rem;
 }
 
-.timeline-method-section:last-of-type {
+details.timeline-method-section:last-of-type {
     margin-bottom: 0.5rem;
 }
 
-.timeline-method-header {
+summary.timeline-method-header {
     display: flex;
     align-items: center;
     gap: 8px;
     margin-bottom: 4px;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
 }
 
-.timeline-method-header h3 {
+summary.timeline-method-header::-webkit-details-marker {
+    display: none;
+}
+
+summary.timeline-method-header::before {
+    content: "\25B6";
+    font-size: 0.65rem;
+    color: var(--color-text-muted);
+    transition: transform 0.15s;
+}
+
+details[open] > summary.timeline-method-header::before {
+    transform: rotate(90deg);
+}
+
+summary.timeline-method-header h3 {
     font-size: 0.95rem;
     margin: 0;
     color: var(--color-text);
+}
+
+details:not([open]) > summary.timeline-method-header {
+    margin-bottom: 0;
 }
 
 .badge-recommended {

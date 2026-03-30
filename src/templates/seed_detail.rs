@@ -1,7 +1,7 @@
 use chrono::Datelike;
 use maud::{html, Markup, PreEscaped};
 
-use crate::db::models::{Seed, SeedImage, SeedPurchase};
+use crate::db::models::{Seed, SeasonPlanEvent, SeedImage, SeedPurchase};
 use crate::schedule::{parse_planting_timing_from_fields, compute_indoor_timeline, compute_outdoor_timeline};
 use crate::viability::estimate_viability;
 use super::layout::layout;
@@ -87,6 +87,97 @@ pub fn seed_purchases_section(seed: &Seed, purchases: &[SeedPurchase]) -> Markup
     }
 }
 
+pub const EVENT_TYPES: &[(&str, &str)] = &[
+    ("comment", "Comment"),
+    ("sow_indoor", "Sow Indoors"),
+    ("sow_outdoor", "Sow Outdoors"),
+    ("transplant", "Transplant"),
+    ("water", "Water"),
+    ("fertilize", "Fertilize"),
+    ("harvest", "Harvest"),
+    ("observation", "Observation"),
+];
+
+fn event_type_label(event_type: &str) -> &str {
+    EVENT_TYPES.iter()
+        .find(|(k, _)| *k == event_type)
+        .map(|(_, v)| *v)
+        .unwrap_or(event_type)
+}
+
+fn format_event_date(iso_date: &str) -> String {
+    // Convert YYYY-MM-DD to MM/DD/YYYY for display
+    if let Some((y, rest)) = iso_date.split_once('-') {
+        if let Some((m, d)) = rest.split_once('-') {
+            return format!("{}/{}/{}", m, d, y);
+        }
+    }
+    iso_date.to_string()
+}
+
+/// Render the planting events section for a seed's current year.
+pub fn seed_events_section(seed: &Seed, events: &[SeasonPlanEvent], year: i32) -> Markup {
+    html! {
+        div #seed-events {
+            section.detail-section {
+                h2 { "Planting Log " (year) }
+
+                // Add event form — primary input is the message
+                form.add-event-form
+                     hx-post=(format!("/seeds/{}/events", seed.id))
+                     hx-target="#seed-events"
+                     hx-swap="outerHTML" {
+                    div.event-compose {
+                        input.event-message-input type="text" name="notes"
+                              placeholder="What happened with this plant?"
+                              autocomplete="off";
+                        div.event-compose-options {
+                            input.event-date-input type="date" name="event_date";
+                            select.event-type-select name="event_type" {
+                                @for (value, label) in EVENT_TYPES {
+                                    option value=(value) { (label) }
+                                }
+                            }
+                            button type="submit" class="btn btn-save btn-sm" { "Log" }
+                        }
+                    }
+                }
+
+                @if !events.is_empty() {
+                    div.events-list {
+                        @for event in events {
+                            div.event-entry {
+                                div.event-entry-header {
+                                    span class=(format!("event-badge event-{}", event.event_type)) {
+                                        (event_type_label(&event.event_type))
+                                    }
+                                    span.event-date { (format_event_date(&event.event_date)) }
+                                    span.event-entry-actions {
+                                        button.btn-icon
+                                               hx-get=(format!("/seeds/{}/events/{}/edit", seed.id, event.id))
+                                               hx-target=(format!("#event-{}", event.id))
+                                               hx-swap="outerHTML" { "Edit" }
+                                        button.btn-icon.btn-icon-delete
+                                               hx-delete=(format!("/seeds/{}/events/{}", seed.id, event.id))
+                                               hx-target="#seed-events"
+                                               hx-swap="outerHTML"
+                                               hx-confirm="Delete this entry?" { "\u{00d7}" }
+                                    }
+                                }
+                                @if let Some(ref notes) = event.notes {
+                                    @if !notes.is_empty() {
+                                        p.event-entry-notes id=(format!("event-{}", event.id)) { (notes) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Helper to render a definition list item if the value is Some.
 fn detail_item(label: &str, value: &Option<String>) -> Markup {
     html! {
@@ -97,7 +188,7 @@ fn detail_item(label: &str, value: &Option<String>) -> Markup {
     }
 }
 
-pub fn seed_detail_page(seed: &Seed, images: &[SeedImage], purchases: &[SeedPurchase], in_plan: bool, is_skipped: bool, plan_start_method: Option<&str>) -> Markup {
+pub fn seed_detail_page(seed: &Seed, images: &[SeedImage], purchases: &[SeedPurchase], events: &[SeasonPlanEvent], in_plan: bool, is_skipped: bool, plan_start_method: Option<&str>) -> Markup {
     let hero_image = images.iter().find(|img| img.position == 1);
     let current_year = chrono::Local::now().year();
     let timing = parse_planting_timing_from_fields(
@@ -143,10 +234,13 @@ pub fn seed_detail_page(seed: &Seed, images: &[SeedImage], purchases: &[SeedPurc
 
             // Timeline section - show separate indoor/outdoor if both available
             @if has_both {
-                (seed_detail_dual_timeline(seed, &timing, current_year, in_plan, is_skipped, plan_start_method))
+                (seed_detail_dual_timeline(seed, &timing, current_year, in_plan, is_skipped, plan_start_method, events))
             } @else {
-                (seed_detail_timeline(seed, &timing, current_year, in_plan, is_skipped))
+                (seed_detail_timeline(seed, &timing, current_year, in_plan, is_skipped, events))
             }
+
+            // Planting events log
+            (seed_events_section(seed, events, current_year))
 
             // Purchase history & viability section
             (seed_purchases_section(seed, purchases))

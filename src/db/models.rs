@@ -87,6 +87,18 @@ pub struct SeasonPlan {
     pub status: String,
 }
 
+#[allow(dead_code)]
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct SeasonPlanEvent {
+    pub id: i64,
+    pub seed_id: i64,
+    pub year: i64,
+    pub event_type: String,
+    pub event_date: String,
+    pub notes: Option<String>,
+    pub created_at: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct AppState {
     pub db: SqlitePool,

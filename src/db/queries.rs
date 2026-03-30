@@ -1,6 +1,6 @@
 use sqlx::SqlitePool;
 
-use super::models::{Seed, SeasonPlan, SeedImage, SeedPurchase};
+use super::models::{Seed, SeasonPlan, SeasonPlanEvent, SeedImage, SeedPurchase};
 
 pub async fn list_seeds(pool: &SqlitePool) -> Result<Vec<Seed>, sqlx::Error> {
     sqlx::query_as::<_, Seed>("SELECT * FROM seeds ORDER BY created_at DESC")
@@ -493,5 +493,59 @@ pub async fn insert_image(pool: &SqlitePool, image: &NewSeedImage) -> Result<(),
     .execute(pool)
     .await?;
 
+    Ok(())
+}
+
+// --- Season Plan Events CRUD ---
+
+pub async fn list_events_for_seed(pool: &SqlitePool, seed_id: i64, year: i64) -> Result<Vec<SeasonPlanEvent>, sqlx::Error> {
+    sqlx::query_as::<_, SeasonPlanEvent>(
+        "SELECT * FROM season_plan_events WHERE seed_id = ? AND year = ? ORDER BY event_date DESC, created_at DESC"
+    )
+    .bind(seed_id)
+    .bind(year)
+    .fetch_all(pool)
+    .await
+}
+
+pub async fn get_event(pool: &SqlitePool, id: i64) -> Result<Option<SeasonPlanEvent>, sqlx::Error> {
+    sqlx::query_as::<_, SeasonPlanEvent>("SELECT * FROM season_plan_events WHERE id = ?")
+        .bind(id)
+        .fetch_optional(pool)
+        .await
+}
+
+pub async fn insert_event(pool: &SqlitePool, seed_id: i64, year: i64, event_type: &str, event_date: &str, notes: Option<&str>) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO season_plan_events (seed_id, year, event_type, event_date, notes) VALUES (?, ?, ?, ?, ?)"
+    )
+    .bind(seed_id)
+    .bind(year)
+    .bind(event_type)
+    .bind(event_date)
+    .bind(notes)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+pub async fn update_event(pool: &SqlitePool, id: i64, event_type: &str, event_date: &str, notes: Option<&str>) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE season_plan_events SET event_type = ?, event_date = ?, notes = ? WHERE id = ?"
+    )
+    .bind(event_type)
+    .bind(event_date)
+    .bind(notes)
+    .bind(id)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+pub async fn delete_event(pool: &SqlitePool, id: i64) -> Result<(), sqlx::Error> {
+    sqlx::query("DELETE FROM season_plan_events WHERE id = ?")
+        .bind(id)
+        .execute(pool)
+        .await?;
     Ok(())
 }

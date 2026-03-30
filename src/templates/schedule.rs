@@ -1,7 +1,7 @@
 use chrono::{Local, NaiveDate};
 use maud::{html, Markup};
 
-use crate::db::models::Seed;
+use crate::db::models::{Seed, SeasonPlanEvent};
 use crate::schedule::{ActionType, PlantingAction, PlantingTiming, compute_seed_timeline, compute_indoor_timeline, compute_outdoor_timeline, compute_timeline_for_method, StartMethod, SeedTimeline};
 use crate::schedule::calculator::{PhaseType, last_frost_date};
 use super::layout::layout_with_nav;
@@ -354,8 +354,9 @@ fn render_timeline(
 }
 
 /// Render a mini timeline for the seed detail page.
-pub fn seed_detail_timeline(seed: &Seed, timing: &PlantingTiming, year: i32, in_plan: bool, is_skipped: bool) -> Markup {
+pub fn seed_detail_timeline(seed: &Seed, timing: &PlantingTiming, year: i32, in_plan: bool, is_skipped: bool, events: &[SeasonPlanEvent]) -> Markup {
     let timeline = compute_seed_timeline(seed, timing, year);
+    let event_refs: Vec<&SeasonPlanEvent> = events.iter().collect();
 
     if timeline.phases.is_empty() {
         return html! {
@@ -370,8 +371,8 @@ pub fn seed_detail_timeline(seed: &Seed, timing: &PlantingTiming, year: i32, in_
         section #timeline-section .detail-section {
             h2 { "Timeline " (year) }
             (render_timeline_legend())
-            (render_single_timeline(&timeline, year))
-            (render_key_dates(&timeline, year))
+            (render_single_timeline(&timeline, year, &event_refs))
+            (render_key_dates(&timeline, year, &event_refs))
             (render_plan_controls(seed, in_plan, is_skipped, false, false, None))
         }
     }
@@ -379,9 +380,10 @@ pub fn seed_detail_timeline(seed: &Seed, timing: &PlantingTiming, year: i32, in_
 
 /// Render separate indoor and outdoor timelines on the seed detail page,
 /// with a "Recommended" badge on the appropriate one.
-pub fn seed_detail_dual_timeline(seed: &Seed, timing: &PlantingTiming, year: i32, in_plan: bool, is_skipped: bool, plan_start_method: Option<&str>) -> Markup {
+pub fn seed_detail_dual_timeline(seed: &Seed, timing: &PlantingTiming, year: i32, in_plan: bool, is_skipped: bool, plan_start_method: Option<&str>, events: &[SeasonPlanEvent]) -> Markup {
     let indoor = compute_indoor_timeline(seed, timing, year);
     let outdoor = compute_outdoor_timeline(seed, timing, year);
+    let event_refs: Vec<&SeasonPlanEvent> = events.iter().collect();
 
     if indoor.is_none() && outdoor.is_none() {
         return html! {
@@ -395,34 +397,53 @@ pub fn seed_detail_dual_timeline(seed: &Seed, timing: &PlantingTiming, year: i32
     let has_indoor = indoor.is_some();
     let has_outdoor = outdoor.is_some();
 
+    // Split events by relevance to indoor vs outdoor timelines
+    let indoor_events: Vec<&SeasonPlanEvent> = event_refs.iter()
+        .filter(|e| e.event_type == "sow_indoor" || e.event_type == "transplant")
+        .copied()
+        .collect();
+    let outdoor_events: Vec<&SeasonPlanEvent> = event_refs.iter()
+        .filter(|e| e.event_type == "sow_outdoor")
+        .copied()
+        .collect();
+
+    // Determine which strategies have sow events logged
+    let has_indoor_sow = events.iter().any(|e| e.event_type == "sow_indoor");
+    let has_outdoor_sow = events.iter().any(|e| e.event_type == "sow_outdoor");
+    let has_any_sow = has_indoor_sow || has_outdoor_sow;
+
+    // Auto-open if: no sow events yet, or this strategy has events
+    let indoor_open = !has_any_sow || has_indoor_sow;
+    let outdoor_open = !has_any_sow || has_outdoor_sow;
+
     html! {
         section #timeline-section .detail-section {
             h2 { "Timeline " (year) }
             (render_timeline_legend())
 
             @if let Some(ref indoor_tl) = indoor {
-                div.timeline-method-section {
-                    div.timeline-method-header {
+                details.timeline-method-section open[indoor_open] {
+                    summary.timeline-method-header {
                         h3 { "Start Indoors" }
                         @if timing.indoor_start_recommended {
                             span.badge.badge-recommended { "Recommended" }
                         }
                     }
-                    (render_single_timeline(indoor_tl, year))
-                    (render_key_dates(indoor_tl, year))
+                    (render_single_timeline(indoor_tl, year, &indoor_events))
+                    (render_key_dates(indoor_tl, year, &indoor_events))
                 }
             }
 
             @if let Some(ref outdoor_tl) = outdoor {
-                div.timeline-method-section {
-                    div.timeline-method-header {
+                details.timeline-method-section open[outdoor_open] {
+                    summary.timeline-method-header {
                         h3 { "Start Outdoors" }
                         @if !timing.indoor_start_recommended {
                             span.badge.badge-recommended { "Recommended" }
                         }
                     }
-                    (render_single_timeline(outdoor_tl, year))
-                    (render_key_dates(outdoor_tl, year))
+                    (render_single_timeline(outdoor_tl, year, &outdoor_events))
+                    (render_key_dates(outdoor_tl, year, &outdoor_events))
                 }
             }
 
@@ -475,8 +496,27 @@ fn render_plan_controls(seed: &Seed, in_plan: bool, is_skipped: bool, has_indoor
     }
 }
 
+/// Map event_type to ActionType for matching against key dates.
+fn event_type_to_action(event_type: &str) -> Option<ActionType> {
+    match event_type {
+        "sow_indoor" => Some(ActionType::StartIndoors),
+        "sow_outdoor" => Some(ActionType::DirectSow),
+        "transplant" => Some(ActionType::TransplantOutdoors),
+        _ => None,
+    }
+}
+
+fn event_type_marker_label(event_type: &str) -> &str {
+    match event_type {
+        "sow_indoor" => "Sowed indoors",
+        "sow_outdoor" => "Sowed outdoors",
+        "transplant" => "Transplanted",
+        _ => "",
+    }
+}
+
 /// Render a single timeline bar (reusable for both combined and split views).
-fn render_single_timeline(timeline: &SeedTimeline, year: i32) -> Markup {
+fn render_single_timeline(timeline: &SeedTimeline, year: i32, events: &[&SeasonPlanEvent]) -> Markup {
     let months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
 
     let today = Local::now().date_naive();
@@ -516,6 +556,16 @@ fn render_single_timeline(timeline: &SeedTimeline, year: i32) -> Markup {
                     @if show_today {
                         div.timeline-today style=(format!("left: {:.1}%;", today_pct)) {}
                     }
+
+                    // Event markers
+                    @for event in events {
+                        @if let Ok(date) = NaiveDate::parse_from_str(&event.event_date, "%Y-%m-%d") {
+                            @let pct = date_to_percent(date, year);
+                            div class=(format!("timeline-event-marker event-marker-{}", event.event_type))
+                                style=(format!("left: {:.1}%;", pct))
+                                title=(format!("{} on {}", event_type_marker_label(&event.event_type), format_date(&date))) {}
+                        }
+                    }
                 }
             }
         }
@@ -523,7 +573,7 @@ fn render_single_timeline(timeline: &SeedTimeline, year: i32) -> Markup {
 }
 
 /// Render the key dates list for a timeline.
-fn render_key_dates(timeline: &SeedTimeline, year: i32) -> Markup {
+fn render_key_dates(timeline: &SeedTimeline, year: i32, events: &[&SeasonPlanEvent]) -> Markup {
     let frost = last_frost_date(year);
 
     html! {
@@ -531,8 +581,23 @@ fn render_key_dates(timeline: &SeedTimeline, year: i32) -> Markup {
             h3 { "Key Dates" }
             dl.info-list {
                 @for action in &timeline.actions {
+                    @let done_event = events.iter().find(|e| event_type_to_action(&e.event_type) == Some(action.action_type.clone()));
                     dt { (action_type_label(&action.action_type)) }
-                    dd { (format_date(&action.date)) " (" (action.notes) ")" }
+                    dd {
+                        @if let Some(evt) = done_event {
+                            span.key-date-done {
+                                (format_date(&NaiveDate::parse_from_str(&evt.event_date, "%Y-%m-%d").unwrap_or(action.date)))
+                            }
+                            " "
+                            span.key-date-check { "\u{2713}" }
+                            @if action.date != NaiveDate::parse_from_str(&evt.event_date, "%Y-%m-%d").unwrap_or(action.date) {
+                                " "
+                                span.key-date-planned { "planned " (format_date(&action.date)) }
+                            }
+                        } @else {
+                            (format_date(&action.date)) " (" (action.notes) ")"
+                        }
+                    }
                 }
                 dt { "Last Frost" }
                 dd { (format_date(&frost)) }
