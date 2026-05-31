@@ -31,7 +31,9 @@ impl Filter {
     pub fn references_skipped(&self) -> bool {
         match self {
             Filter::Plan(Some(s)) if s == "skipped" => true,
-            Filter::And(children) | Filter::Or(children) => children.iter().any(|c| c.references_skipped()),
+            Filter::And(children) | Filter::Or(children) => {
+                children.iter().any(|c| c.references_skipped())
+            }
             Filter::Not(child) => child.references_skipped(),
             _ => false,
         }
@@ -50,7 +52,11 @@ pub enum DatePredicate {
 pub enum DateValue {
     Now,
     Absolute(String),
-    Relative { amount: i64, unit: TimeUnit, direction: Direction },
+    Relative {
+        amount: i64,
+        unit: TimeUnit,
+        direction: Direction,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]

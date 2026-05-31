@@ -40,10 +40,7 @@ pub fn estimate_viability(
     let max_years = lookup_max_years(subcategory, category);
 
     // Determine the species key used for display
-    let species_key = subcategory
-        .or(category)
-        .unwrap_or("unknown")
-        .to_string();
+    let species_key = subcategory.or(category).unwrap_or("unknown").to_string();
 
     let percentage = if age == 0 {
         100
@@ -115,10 +112,7 @@ fn estimate_viability_with_year(
     let age = (current_year - purchase_year).max(0) as u8;
     let max_years = lookup_max_years(subcategory, category);
 
-    let species_key = subcategory
-        .or(category)
-        .unwrap_or("unknown")
-        .to_string();
+    let species_key = subcategory.or(category).unwrap_or("unknown").to_string();
 
     let percentage = if age == 0 {
         100
@@ -275,7 +269,11 @@ mod tests {
         assert_eq!(est.percentage, 0);
         let msg = est.warning_message().unwrap();
         assert!(msg.contains("exceeded"), "Expected 'exceeded' in: {}", msg);
-        assert!(msg.contains("replacing") || msg.contains("replace"), "Expected 'replace' in: {}", msg);
+        assert!(
+            msg.contains("replacing") || msg.contains("replace"),
+            "Expected 'replace' in: {}",
+            msg
+        );
     }
 
     #[test]
@@ -285,7 +283,11 @@ mod tests {
         assert!(est.percentage > 0);
         assert!(est.age_years + 1 >= est.max_years);
         let msg = est.warning_message().unwrap();
-        assert!(msg.contains("last year") || msg.contains("Last year"), "Expected 'last year' in: {}", msg);
+        assert!(
+            msg.contains("last year") || msg.contains("Last year"),
+            "Expected 'last year' in: {}",
+            msg
+        );
     }
 
     #[test]

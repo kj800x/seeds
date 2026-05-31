@@ -4,7 +4,9 @@ use crate::search::token::Token;
 pub fn parse(tokens: &[Token]) -> Result<Filter, String> {
     let (filter, pos) = parse_filter(tokens, 0)?;
     if pos != tokens.len() {
-        return Err(format!("unexpected token after expression at position {pos}"));
+        return Err(format!(
+            "unexpected token after expression at position {pos}"
+        ));
     }
     Ok(filter)
 }
@@ -126,7 +128,9 @@ fn parse_date_predicate(tokens: &[Token], pos: usize) -> Result<(DatePredicate, 
                 other => Err(format!("expected 'before' or 'after', got '{other}'")),
             }
         }
-        Some(t) => Err(format!("expected 'now' or '(before ...)' / '(after ...)', got {t:?}")),
+        Some(t) => Err(format!(
+            "expected 'now' or '(before ...)' / '(after ...)', got {t:?}"
+        )),
         None => Err("unexpected end of input in date predicate".to_string()),
     }
 }
@@ -158,9 +162,17 @@ fn parse_date_string(s: &str) -> Result<DateValue, String> {
             };
             if let Some(unit) = unit {
                 if parts[2] == "ago" {
-                    return Ok(DateValue::Relative { amount, unit, direction: Direction::Ago });
+                    return Ok(DateValue::Relative {
+                        amount,
+                        unit,
+                        direction: Direction::Ago,
+                    });
                 } else if parts.len() >= 4 && parts[2] == "from" && parts[3] == "now" {
-                    return Ok(DateValue::Relative { amount, unit, direction: Direction::FromNow });
+                    return Ok(DateValue::Relative {
+                        amount,
+                        unit,
+                        direction: Direction::FromNow,
+                    });
                 }
             }
         }
@@ -179,7 +191,9 @@ fn parse_comparison(tokens: &[Token], pos: usize) -> Result<(Comparison, usize),
             };
             let pos = pos + 1;
             let val = match tokens.get(pos) {
-                Some(Token::Symbol(s)) => s.parse::<u8>().map_err(|_| format!("expected number, got '{s}'"))?,
+                Some(Token::Symbol(s)) => s
+                    .parse::<u8>()
+                    .map_err(|_| format!("expected number, got '{s}'"))?,
                 Some(t) => return Err(format!("expected number, got {t:?}")),
                 None => return Err("unexpected end of input in comparison".to_string()),
             };
@@ -277,7 +291,9 @@ mod tests {
     fn test_start_before_date() {
         assert_eq!(
             parse_str("(start (before \"March 30\"))").unwrap(),
-            Filter::Start(DatePredicate::Before(DateValue::Absolute("March 30".into()))),
+            Filter::Start(DatePredicate::Before(DateValue::Absolute(
+                "March 30".into()
+            ))),
         );
     }
 
@@ -303,10 +319,7 @@ mod tests {
 
     #[test]
     fn test_plan_no_arg() {
-        assert_eq!(
-            parse_str("(plan)").unwrap(),
-            Filter::Plan(None),
-        );
+        assert_eq!(parse_str("(plan)").unwrap(), Filter::Plan(None),);
     }
 
     #[test]

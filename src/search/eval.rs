@@ -1,8 +1,8 @@
 use chrono::{Duration, NaiveDate};
 
 use crate::db::models::Seed;
-use crate::schedule::{PlantingTiming, SowingStatus, parse_planting_timing_from_fields};
 use crate::schedule::calculator::last_frost_date;
+use crate::schedule::{PlantingTiming, SowingStatus, parse_planting_timing_from_fields};
 use crate::viability::estimate_viability;
 
 use super::ast::*;
@@ -25,8 +25,16 @@ pub fn matches(filter: &Filter, ctx: &SeedContext) -> bool {
         Filter::Not(child) => !matches(child, ctx),
 
         Filter::Title(s) => contains_ci(&ctx.seed.title, s),
-        Filter::Category(s) => ctx.seed.category.as_deref().map_or(false, |v| contains_ci(v, s)),
-        Filter::Subcategory(s) => ctx.seed.subcategory.as_deref().map_or(false, |v| contains_ci(v, s)),
+        Filter::Category(s) => ctx
+            .seed
+            .category
+            .as_deref()
+            .map_or(false, |v| contains_ci(v, s)),
+        Filter::Subcategory(s) => ctx
+            .seed
+            .subcategory
+            .as_deref()
+            .map_or(false, |v| contains_ci(v, s)),
 
         Filter::Organic => ctx.seed.is_organic,
         Filter::Heirloom => ctx.seed.is_heirloom,
@@ -41,23 +49,21 @@ pub fn matches(filter: &Filter, ctx: &SeedContext) -> bool {
         Filter::Sow(pred) => eval_timing_predicate(pred, TimingField::Sow, ctx),
         Filter::Transplant(pred) => eval_timing_predicate(pred, TimingField::Transplant, ctx),
 
-        Filter::Viable => {
-            estimate_viability(
-                ctx.seed.subcategory.as_deref(),
-                ctx.seed.category.as_deref(),
-                ctx.newest_purchase_year,
-            ).map_or(false, |v| v.percentage > 0)
-        }
-        Filter::Viability(cmp) => {
-            estimate_viability(
-                ctx.seed.subcategory.as_deref(),
-                ctx.seed.category.as_deref(),
-                ctx.newest_purchase_year,
-            ).map_or(false, |v| match cmp {
-                Comparison::Above(threshold) => v.percentage > *threshold,
-                Comparison::Below(threshold) => v.percentage < *threshold,
-            })
-        }
+        Filter::Viable => estimate_viability(
+            ctx.seed.subcategory.as_deref(),
+            ctx.seed.category.as_deref(),
+            ctx.newest_purchase_year,
+        )
+        .map_or(false, |v| v.percentage > 0),
+        Filter::Viability(cmp) => estimate_viability(
+            ctx.seed.subcategory.as_deref(),
+            ctx.seed.category.as_deref(),
+            ctx.newest_purchase_year,
+        )
+        .map_or(false, |v| match cmp {
+            Comparison::Above(threshold) => v.percentage > *threshold,
+            Comparison::Below(threshold) => v.percentage < *threshold,
+        }),
     }
 }
 
@@ -76,16 +82,12 @@ fn eval_timing_predicate(pred: &DatePredicate, field: TimingField, ctx: &SeedCon
         DatePredicate::Now => {
             // Check if currently in the relevant window
             match field {
-                TimingField::Start => {
-                    ctx.sowing_status.map_or(false, |s| {
-                        s.method == "Start Indoors" && s.days_relative == 0
-                    })
-                }
-                TimingField::Sow => {
-                    ctx.sowing_status.map_or(false, |s| {
-                        s.method == "Direct Sow" && s.days_relative == 0
-                    })
-                }
+                TimingField::Start => ctx.sowing_status.map_or(false, |s| {
+                    s.method == "Start Indoors" && s.days_relative == 0
+                }),
+                TimingField::Sow => ctx
+                    .sowing_status
+                    .map_or(false, |s| s.method == "Direct Sow" && s.days_relative == 0),
                 TimingField::Transplant => {
                     // Transplant "now" means transplant date is within ~1 week of today
                     let timing = parse_seed_timing(ctx.seed);
@@ -153,7 +155,11 @@ fn resolve_date_value(val: &DateValue, today: NaiveDate, current_year: i32) -> O
     match val {
         DateValue::Now => Some(today),
         DateValue::Absolute(s) => parse_absolute_date(s, current_year),
-        DateValue::Relative { amount, unit, direction } => {
+        DateValue::Relative {
+            amount,
+            unit,
+            direction,
+        } => {
             let days = match unit {
                 TimeUnit::Days => *amount,
                 TimeUnit::Weeks => *amount * 7,
@@ -280,9 +286,18 @@ mod tests {
     fn test_and_or_not() {
         let seed = make_seed();
         let ctx = make_ctx(&seed);
-        assert!(matches(&Filter::And(vec![Filter::Organic, Filter::Plan(None)]), &ctx));
-        assert!(!matches(&Filter::And(vec![Filter::Organic, Filter::Heirloom]), &ctx));
-        assert!(matches(&Filter::Or(vec![Filter::Heirloom, Filter::Organic]), &ctx));
+        assert!(matches(
+            &Filter::And(vec![Filter::Organic, Filter::Plan(None)]),
+            &ctx
+        ));
+        assert!(!matches(
+            &Filter::And(vec![Filter::Organic, Filter::Heirloom]),
+            &ctx
+        ));
+        assert!(matches(
+            &Filter::Or(vec![Filter::Heirloom, Filter::Organic]),
+            &ctx
+        ));
         assert!(matches(&Filter::Not(Box::new(Filter::Heirloom)), &ctx));
     }
 
@@ -293,12 +308,16 @@ mod tests {
         // Tomato: start indoors 6 weeks before transplant (May 17) = April 5
         // (start (before "April 15")) -> April 5 < April 15 = true
         assert!(matches(
-            &Filter::Start(DatePredicate::Before(DateValue::Absolute("April 15".into()))),
+            &Filter::Start(DatePredicate::Before(DateValue::Absolute(
+                "April 15".into()
+            ))),
             &ctx,
         ));
         // (start (before "March 15")) -> April 5 < March 15 = false
         assert!(!matches(
-            &Filter::Start(DatePredicate::Before(DateValue::Absolute("March 15".into()))),
+            &Filter::Start(DatePredicate::Before(DateValue::Absolute(
+                "March 15".into()
+            ))),
             &ctx,
         ));
     }

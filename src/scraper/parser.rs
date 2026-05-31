@@ -142,7 +142,8 @@ pub fn parse_growing_details(html: &str) -> GrowingDetails {
             "special care" => details.special_care = Some(value),
             _ => {
                 // Capture any growing/cultivation info we haven't explicitly mapped
-                if label_lower.contains("growing") || label_lower.contains("cultivation")
+                if label_lower.contains("growing")
+                    || label_lower.contains("cultivation")
                     || label_lower.contains("care")
                 {
                     details.growing_instructions = Some(value);
@@ -157,7 +158,9 @@ pub fn parse_growing_details(html: &str) -> GrowingDetails {
     }
 
     if details.is_empty() {
-        tracing::warn!("Could not extract growing details from HTML -- selectors may need updating");
+        tracing::warn!(
+            "Could not extract growing details from HTML -- selectors may need updating"
+        );
     }
 
     details
@@ -183,7 +186,10 @@ fn extract_bold_label_pairs(document: &Html) -> Vec<(String, String)> {
     extract_bold_pairs_with_b_selector(document, "p b")
 }
 
-fn extract_bold_pairs_with_b_selector(document: &Html, selector_str: &str) -> Vec<(String, String)> {
+fn extract_bold_pairs_with_b_selector(
+    document: &Html,
+    selector_str: &str,
+) -> Vec<(String, String)> {
     let mut pairs = Vec::new();
 
     let b_selector = Selector::parse(selector_str).expect("valid selector");
@@ -200,10 +206,7 @@ fn extract_bold_pairs_with_b_selector(document: &Html, selector_str: &str) -> Ve
             // Get the parent <p> element's full text, then strip the bold label prefix
             if let Some(parent) = b_elem.parent_element() {
                 let full_text: String = parent.text().collect::<Vec<_>>().join("");
-                let value = full_text
-                    .replace(&bold_text, "")
-                    .trim()
-                    .to_string();
+                let value = full_text.replace(&bold_text, "").trim().to_string();
 
                 if !value.is_empty() {
                     pairs.push((label, value));
@@ -307,10 +310,7 @@ mod tests {
     fn test_parse_tags_frost_tolerant() {
         let tags = "Cat - Vegetables, Frost Tolerant";
         let parsed = parse_tags(tags);
-        assert_eq!(
-            parsed.frost_tolerance,
-            Some("Frost Tolerant".to_string())
-        );
+        assert_eq!(parsed.frost_tolerance, Some("Frost Tolerant".to_string()));
     }
 
     #[test]
@@ -343,7 +343,10 @@ mod tests {
             Some("75-80 days from transplanting".to_string())
         );
         assert_eq!(details.sow_depth, Some("1/4\"".to_string()));
-        assert_eq!(details.harvest_instructions, Some("Pick when ripe.".to_string()));
+        assert_eq!(
+            details.harvest_instructions,
+            Some("Pick when ripe.".to_string())
+        );
     }
 
     #[test]

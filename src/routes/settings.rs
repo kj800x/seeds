@@ -23,9 +23,7 @@ pub async fn reset_all_data(State(state): State<AppState>) -> Result<Markup, App
     sqlx::query("DELETE FROM seed_images")
         .execute(&state.db)
         .await?;
-    sqlx::query("DELETE FROM seeds")
-        .execute(&state.db)
-        .await?;
+    sqlx::query("DELETE FROM seeds").execute(&state.db).await?;
 
     // Clean up image files
     let images_dir = state.data_dir.join("images");

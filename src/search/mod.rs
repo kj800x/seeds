@@ -1,7 +1,7 @@
 pub mod ast;
-pub mod token;
-pub mod parser;
 pub mod eval;
+pub mod parser;
+pub mod token;
 
 pub use ast::Filter;
 pub use eval::{SeedContext, matches};

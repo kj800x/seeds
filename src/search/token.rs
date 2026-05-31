@@ -12,9 +12,17 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, String> {
 
     while let Some(&ch) = chars.peek() {
         match ch {
-            ' ' | '\t' | '\n' | '\r' => { chars.next(); }
-            '(' => { chars.next(); tokens.push(Token::LParen); }
-            ')' => { chars.next(); tokens.push(Token::RParen); }
+            ' ' | '\t' | '\n' | '\r' => {
+                chars.next();
+            }
+            '(' => {
+                chars.next();
+                tokens.push(Token::LParen);
+            }
+            ')' => {
+                chars.next();
+                tokens.push(Token::RParen);
+            }
             '"' => {
                 chars.next(); // consume opening quote
                 let mut s = String::new();
@@ -51,31 +59,47 @@ mod tests {
     #[test]
     fn test_simple_expr() {
         let tokens = tokenize("(category \"Vegetables\")").unwrap();
-        assert_eq!(tokens, vec![
-            Token::LParen,
-            Token::Symbol("category".into()),
-            Token::Str("Vegetables".into()),
-            Token::RParen,
-        ]);
+        assert_eq!(
+            tokens,
+            vec![
+                Token::LParen,
+                Token::Symbol("category".into()),
+                Token::Str("Vegetables".into()),
+                Token::RParen,
+            ]
+        );
     }
 
     #[test]
     fn test_nested() {
         let tokens = tokenize("(and (organic) (in-plan))").unwrap();
-        assert_eq!(tokens, vec![
-            Token::LParen, Token::Symbol("and".into()),
-            Token::LParen, Token::Symbol("organic".into()), Token::RParen,
-            Token::LParen, Token::Symbol("in-plan".into()), Token::RParen,
-            Token::RParen,
-        ]);
+        assert_eq!(
+            tokens,
+            vec![
+                Token::LParen,
+                Token::Symbol("and".into()),
+                Token::LParen,
+                Token::Symbol("organic".into()),
+                Token::RParen,
+                Token::LParen,
+                Token::Symbol("in-plan".into()),
+                Token::RParen,
+                Token::RParen,
+            ]
+        );
     }
 
     #[test]
     fn test_symbol_with_hyphens() {
         let tokens = tokenize("(in-plan)").unwrap();
-        assert_eq!(tokens, vec![
-            Token::LParen, Token::Symbol("in-plan".into()), Token::RParen,
-        ]);
+        assert_eq!(
+            tokens,
+            vec![
+                Token::LParen,
+                Token::Symbol("in-plan".into()),
+                Token::RParen,
+            ]
+        );
     }
 
     #[test]
@@ -86,8 +110,14 @@ mod tests {
     #[test]
     fn test_bare_symbol() {
         let tokens = tokenize("(start now)").unwrap();
-        assert_eq!(tokens, vec![
-            Token::LParen, Token::Symbol("start".into()), Token::Symbol("now".into()), Token::RParen,
-        ]);
+        assert_eq!(
+            tokens,
+            vec![
+                Token::LParen,
+                Token::Symbol("start".into()),
+                Token::Symbol("now".into()),
+                Token::RParen,
+            ]
+        );
     }
 }

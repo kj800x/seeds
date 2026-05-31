@@ -1,7 +1,9 @@
 use chrono::{Duration, NaiveDate};
 
+use super::parser::{
+    PlantingTiming, parse_days_to_emerge, parse_days_to_maturity, parse_planting_timing_from_fields,
+};
 use crate::db::models::Seed;
-use super::parser::{PlantingTiming, parse_days_to_maturity, parse_days_to_emerge, parse_planting_timing_from_fields};
 
 /// Halifax MA last frost date: May 10
 pub const HALIFAX_MA_LAST_FROST: (u32, u32) = (5, 10);
@@ -109,7 +111,12 @@ pub struct SowingStatus {
 /// Compute sowing status for a seed given the current date.
 /// When `method_override` is Some, forces that method instead of using the recommendation.
 /// Returns None if timing cannot be parsed or no method applies.
-pub fn compute_sowing_status(seed: &Seed, today: NaiveDate, year: i32, method_override: Option<StartMethod>) -> Option<SowingStatus> {
+pub fn compute_sowing_status(
+    seed: &Seed,
+    today: NaiveDate,
+    year: i32,
+    method_override: Option<StartMethod>,
+) -> Option<SowingStatus> {
     let timing = parse_planting_timing_from_fields(
         seed.when_to_sow_outside.as_deref(),
         seed.when_to_start_inside.as_deref(),
@@ -131,7 +138,9 @@ pub fn compute_sowing_status(seed: &Seed, today: NaiveDate, year: i32, method_ov
             frost
         };
         let start = base - Duration::weeks(weeks_before as i64);
-        let days_to_emerge = seed.days_to_emerge.as_deref()
+        let days_to_emerge = seed
+            .days_to_emerge
+            .as_deref()
             .and_then(parse_days_to_emerge)
             .unwrap_or(10) as i64;
         let end = start + Duration::days(days_to_emerge.max(14));
@@ -154,7 +163,9 @@ pub fn compute_sowing_status(seed: &Seed, today: NaiveDate, year: i32, method_ov
         // Outdoor path
         let weeks_rel = timing.direct_sow_weeks_relative.unwrap();
         let start = frost + Duration::weeks(weeks_rel as i64);
-        let days_to_emerge = seed.days_to_emerge.as_deref()
+        let days_to_emerge = seed
+            .days_to_emerge
+            .as_deref()
             .and_then(parse_days_to_emerge)
             .unwrap_or(10) as i64;
         let end = start + Duration::days(days_to_emerge.max(14));
@@ -182,7 +193,9 @@ pub fn compute_sowing_status(seed: &Seed, today: NaiveDate, year: i32, method_ov
             frost
         };
         let start = base - Duration::weeks(weeks_before as i64);
-        let days_to_emerge = seed.days_to_emerge.as_deref()
+        let days_to_emerge = seed
+            .days_to_emerge
+            .as_deref()
             .and_then(parse_days_to_emerge)
             .unwrap_or(10) as i64;
         let end = start + Duration::days(days_to_emerge.max(14));
@@ -217,11 +230,15 @@ pub fn compute_seed_timeline(seed: &Seed, timing: &PlantingTiming, year: i32) ->
     let mut phases = Vec::new();
     let mut actions = Vec::new();
 
-    let days_to_maturity = seed.days_to_maturity.as_deref()
+    let days_to_maturity = seed
+        .days_to_maturity
+        .as_deref()
         .and_then(parse_days_to_maturity)
         .unwrap_or(60) as i64;
 
-    let days_to_emerge = seed.days_to_emerge.as_deref()
+    let days_to_emerge = seed
+        .days_to_emerge
+        .as_deref()
         .and_then(parse_days_to_emerge)
         .unwrap_or(10) as i64;
 
@@ -359,7 +376,8 @@ pub fn compute_seed_timeline(seed: &Seed, timing: &PlantingTiming, year: i32) ->
         });
 
         // Only add outdoor growing if we don't already have it (from indoor path)
-        if timing.transplant_weeks_relative.is_none() && timing.start_indoors_weeks_before.is_none() {
+        if timing.transplant_weeks_relative.is_none() && timing.start_indoors_weeks_before.is_none()
+        {
             phases.push(TimelinePhase {
                 phase_type: PhaseType::OutdoorGrowing,
                 start: sow_window_end,
@@ -386,18 +404,26 @@ pub fn compute_seed_timeline(seed: &Seed, timing: &PlantingTiming, year: i32) ->
 
 /// Compute the indoor-only timeline: sow → indoor growth → transplant → outdoor growing → harvest.
 /// Returns None if the seed has no indoor start option.
-pub fn compute_indoor_timeline(seed: &Seed, timing: &PlantingTiming, year: i32) -> Option<SeedTimeline> {
+pub fn compute_indoor_timeline(
+    seed: &Seed,
+    timing: &PlantingTiming,
+    year: i32,
+) -> Option<SeedTimeline> {
     timing.start_indoors_weeks_before?;
 
     let frost = last_frost_date(year);
     let mut phases = Vec::new();
     let mut actions = Vec::new();
 
-    let days_to_maturity = seed.days_to_maturity.as_deref()
+    let days_to_maturity = seed
+        .days_to_maturity
+        .as_deref()
         .and_then(parse_days_to_maturity)
         .unwrap_or(60) as i64;
 
-    let days_to_emerge = seed.days_to_emerge.as_deref()
+    let days_to_emerge = seed
+        .days_to_emerge
+        .as_deref()
         .and_then(parse_days_to_emerge)
         .unwrap_or(10) as i64;
 
@@ -511,18 +537,26 @@ pub fn compute_indoor_timeline(seed: &Seed, timing: &PlantingTiming, year: i32) 
 
 /// Compute the outdoor-only timeline: direct sow → outdoor growing → harvest.
 /// Returns None if the seed has no direct sow option.
-pub fn compute_outdoor_timeline(seed: &Seed, timing: &PlantingTiming, year: i32) -> Option<SeedTimeline> {
+pub fn compute_outdoor_timeline(
+    seed: &Seed,
+    timing: &PlantingTiming,
+    year: i32,
+) -> Option<SeedTimeline> {
     timing.direct_sow_weeks_relative?;
 
     let frost = last_frost_date(year);
     let mut phases = Vec::new();
     let mut actions = Vec::new();
 
-    let days_to_maturity = seed.days_to_maturity.as_deref()
+    let days_to_maturity = seed
+        .days_to_maturity
+        .as_deref()
         .and_then(parse_days_to_maturity)
         .unwrap_or(60) as i64;
 
-    let days_to_emerge = seed.days_to_emerge.as_deref()
+    let days_to_emerge = seed
+        .days_to_emerge
+        .as_deref()
         .and_then(parse_days_to_emerge)
         .unwrap_or(10) as i64;
 
@@ -571,7 +605,12 @@ pub fn compute_outdoor_timeline(seed: &Seed, timing: &PlantingTiming, year: i32)
 }
 
 /// Compute timeline for a specific start method, falling back to the combined timeline.
-pub fn compute_timeline_for_method(seed: &Seed, timing: &PlantingTiming, year: i32, method: StartMethod) -> SeedTimeline {
+pub fn compute_timeline_for_method(
+    seed: &Seed,
+    timing: &PlantingTiming,
+    year: i32,
+    method: StartMethod,
+) -> SeedTimeline {
     match method {
         StartMethod::Indoor => compute_indoor_timeline(seed, timing, year)
             .unwrap_or_else(|| compute_seed_timeline(seed, timing, year)),
@@ -582,7 +621,10 @@ pub fn compute_timeline_for_method(seed: &Seed, timing: &PlantingTiming, year: i
 
 /// Generate a schedule of planting actions for seeds with parsed timing data.
 #[allow(dead_code)]
-pub fn generate_schedule(seeds_with_timing: &[(Seed, PlantingTiming)], year: i32) -> Vec<PlantingAction> {
+pub fn generate_schedule(
+    seeds_with_timing: &[(Seed, PlantingTiming)],
+    year: i32,
+) -> Vec<PlantingAction> {
     let mut actions: Vec<PlantingAction> = Vec::new();
 
     for (seed, timing) in seeds_with_timing {
@@ -676,7 +718,10 @@ mod tests {
         let actions = generate_schedule(&[(seed, timing)], 2026);
         assert!(actions.len() >= 1);
         assert_eq!(actions[0].action_type, ActionType::StartIndoors);
-        assert_eq!(actions[0].date, NaiveDate::from_ymd_opt(2026, 3, 29).unwrap());
+        assert_eq!(
+            actions[0].date,
+            NaiveDate::from_ymd_opt(2026, 3, 29).unwrap()
+        );
     }
 
     #[test]
@@ -690,8 +735,14 @@ mod tests {
         };
 
         let actions = generate_schedule(&[(seed, timing)], 2026);
-        let transplant = actions.iter().find(|a| a.action_type == ActionType::TransplantOutdoors).unwrap();
-        assert_eq!(transplant.date, NaiveDate::from_ymd_opt(2026, 5, 17).unwrap());
+        let transplant = actions
+            .iter()
+            .find(|a| a.action_type == ActionType::TransplantOutdoors)
+            .unwrap();
+        assert_eq!(
+            transplant.date,
+            NaiveDate::from_ymd_opt(2026, 5, 17).unwrap()
+        );
     }
 
     #[test]
@@ -705,11 +756,20 @@ mod tests {
         };
 
         let actions = generate_schedule(&[(seed, timing)], 2026);
-        let indoor = actions.iter().find(|a| a.action_type == ActionType::StartIndoors).unwrap();
-        let transplant = actions.iter().find(|a| a.action_type == ActionType::TransplantOutdoors).unwrap();
+        let indoor = actions
+            .iter()
+            .find(|a| a.action_type == ActionType::StartIndoors)
+            .unwrap();
+        let transplant = actions
+            .iter()
+            .find(|a| a.action_type == ActionType::TransplantOutdoors)
+            .unwrap();
 
         assert_eq!(indoor.date, NaiveDate::from_ymd_opt(2026, 4, 5).unwrap());
-        assert_eq!(transplant.date, NaiveDate::from_ymd_opt(2026, 5, 17).unwrap());
+        assert_eq!(
+            transplant.date,
+            NaiveDate::from_ymd_opt(2026, 5, 17).unwrap()
+        );
     }
 
     #[test]
@@ -723,7 +783,10 @@ mod tests {
         };
 
         let actions = generate_schedule(&[(seed, timing)], 2026);
-        let sow = actions.iter().find(|a| a.action_type == ActionType::DirectSow).unwrap();
+        let sow = actions
+            .iter()
+            .find(|a| a.action_type == ActionType::DirectSow)
+            .unwrap();
         assert_eq!(sow.date, NaiveDate::from_ymd_opt(2026, 4, 12).unwrap());
     }
 
@@ -739,24 +802,36 @@ mod tests {
     #[test]
     fn test_schedule_sorted_by_date() {
         let seeds_timing = vec![
-            (make_seed(1, "Bean"), PlantingTiming {
-                start_indoors_weeks_before: None,
-                transplant_weeks_relative: None,
-                direct_sow_weeks_relative: Some(2),
-                indoor_start_recommended: false,
-            }),
-            (make_seed(2, "Lettuce"), PlantingTiming {
-                start_indoors_weeks_before: None,
-                transplant_weeks_relative: None,
-                direct_sow_weeks_relative: Some(-4),
-                indoor_start_recommended: false,
-            }),
+            (
+                make_seed(1, "Bean"),
+                PlantingTiming {
+                    start_indoors_weeks_before: None,
+                    transplant_weeks_relative: None,
+                    direct_sow_weeks_relative: Some(2),
+                    indoor_start_recommended: false,
+                },
+            ),
+            (
+                make_seed(2, "Lettuce"),
+                PlantingTiming {
+                    start_indoors_weeks_before: None,
+                    transplant_weeks_relative: None,
+                    direct_sow_weeks_relative: Some(-4),
+                    indoor_start_recommended: false,
+                },
+            ),
         ];
 
         let actions = generate_schedule(&seeds_timing, 2026);
         assert!(actions.len() >= 2);
-        let bean_sow = actions.iter().find(|a| a.seed_title == "Bean" && a.action_type == ActionType::DirectSow).unwrap();
-        let lettuce_sow = actions.iter().find(|a| a.seed_title == "Lettuce" && a.action_type == ActionType::DirectSow).unwrap();
+        let bean_sow = actions
+            .iter()
+            .find(|a| a.seed_title == "Bean" && a.action_type == ActionType::DirectSow)
+            .unwrap();
+        let lettuce_sow = actions
+            .iter()
+            .find(|a| a.seed_title == "Lettuce" && a.action_type == ActionType::DirectSow)
+            .unwrap();
         assert!(lettuce_sow.date < bean_sow.date);
     }
 
@@ -773,10 +848,30 @@ mod tests {
         };
 
         let timeline = compute_seed_timeline(&seed, &timing, 2026);
-        assert!(timeline.phases.iter().any(|p| p.phase_type == PhaseType::IndoorGrowing));
-        assert!(timeline.phases.iter().any(|p| p.phase_type == PhaseType::TransplantWindow));
-        assert!(timeline.phases.iter().any(|p| p.phase_type == PhaseType::OutdoorGrowing));
-        assert!(timeline.phases.iter().any(|p| p.phase_type == PhaseType::Harvest));
+        assert!(
+            timeline
+                .phases
+                .iter()
+                .any(|p| p.phase_type == PhaseType::IndoorGrowing)
+        );
+        assert!(
+            timeline
+                .phases
+                .iter()
+                .any(|p| p.phase_type == PhaseType::TransplantWindow)
+        );
+        assert!(
+            timeline
+                .phases
+                .iter()
+                .any(|p| p.phase_type == PhaseType::OutdoorGrowing)
+        );
+        assert!(
+            timeline
+                .phases
+                .iter()
+                .any(|p| p.phase_type == PhaseType::Harvest)
+        );
     }
 
     #[test]
@@ -792,9 +887,29 @@ mod tests {
         };
 
         let timeline = compute_seed_timeline(&seed, &timing, 2026);
-        assert!(timeline.phases.iter().any(|p| p.phase_type == PhaseType::PlantingWindow));
-        assert!(timeline.phases.iter().any(|p| p.phase_type == PhaseType::OutdoorGrowing));
-        assert!(timeline.phases.iter().any(|p| p.phase_type == PhaseType::Harvest));
-        assert!(!timeline.phases.iter().any(|p| p.phase_type == PhaseType::IndoorGrowing));
+        assert!(
+            timeline
+                .phases
+                .iter()
+                .any(|p| p.phase_type == PhaseType::PlantingWindow)
+        );
+        assert!(
+            timeline
+                .phases
+                .iter()
+                .any(|p| p.phase_type == PhaseType::OutdoorGrowing)
+        );
+        assert!(
+            timeline
+                .phases
+                .iter()
+                .any(|p| p.phase_type == PhaseType::Harvest)
+        );
+        assert!(
+            !timeline
+                .phases
+                .iter()
+                .any(|p| p.phase_type == PhaseType::IndoorGrowing)
+        );
     }
 }

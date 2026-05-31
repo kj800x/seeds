@@ -17,7 +17,11 @@ impl fmt::Display for AppError {
             AppError::ScraperError(msg) => write!(f, "Scraper error: {}", msg),
             AppError::NotFound(msg) => write!(f, "Not found: {}", msg),
             AppError::DuplicateSeed { existing_id } => {
-                write!(f, "This seed is already in your collection (id: {})", existing_id)
+                write!(
+                    f,
+                    "This seed is already in your collection (id: {})",
+                    existing_id
+                )
             }
         }
     }

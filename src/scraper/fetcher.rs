@@ -77,10 +77,7 @@ pub async fn fetch_product(
     let handle = extract_handle(url)?;
 
     // Construct the base URL from the handle
-    let base_url = format!(
-        "https://www.botanicalinterests.com/products/{}",
-        handle
-    );
+    let base_url = format!("https://www.botanicalinterests.com/products/{}", handle);
     let json_url = format!("{}.json", base_url);
 
     // Fetch JSON API endpoint
@@ -103,9 +100,10 @@ pub async fn fetch_product(
         )));
     }
 
-    let product_resp: ShopifyProductResponse = json_resp.json().await.map_err(|e| {
-        AppError::ScraperError(format!("Failed to parse JSON response: {}", e))
-    })?;
+    let product_resp: ShopifyProductResponse = json_resp
+        .json()
+        .await
+        .map_err(|e| AppError::ScraperError(format!("Failed to parse JSON response: {}", e)))?;
 
     // Fetch the HTML page for growing details
     let html_resp = client
@@ -114,9 +112,10 @@ pub async fn fetch_product(
         .await
         .map_err(|e| AppError::ScraperError(format!("Failed to fetch HTML page: {}", e)))?;
 
-    let raw_html = html_resp.text().await.map_err(|e| {
-        AppError::ScraperError(format!("Failed to read HTML response body: {}", e))
-    })?;
+    let raw_html = html_resp
+        .text()
+        .await
+        .map_err(|e| AppError::ScraperError(format!("Failed to read HTML response body: {}", e)))?;
 
     Ok((product_resp.product, raw_html, handle))
 }
@@ -128,10 +127,7 @@ mod tests {
     #[test]
     fn test_extract_handle_basic() {
         let url = "https://www.botanicalinterests.com/products/sun-gold-cherry-tomato-seeds";
-        assert_eq!(
-            extract_handle(url).unwrap(),
-            "sun-gold-cherry-tomato-seeds"
-        );
+        assert_eq!(extract_handle(url).unwrap(), "sun-gold-cherry-tomato-seeds");
     }
 
     #[test]

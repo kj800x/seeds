@@ -1,7 +1,7 @@
 use axum::extract::{Form, Path, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use maud::{html, Markup};
+use maud::{Markup, html};
 use serde::Deserialize;
 
 use chrono::Datelike;
@@ -11,7 +11,9 @@ use crate::db::queries;
 use crate::error::AppError;
 use crate::scraper;
 use crate::templates::home::plan_toggle_button;
-use crate::templates::seed_detail::{seed_detail_page, seed_events_section, seed_purchases_section};
+use crate::templates::seed_detail::{
+    seed_detail_page, seed_events_section, seed_purchases_section,
+};
 
 #[derive(Deserialize)]
 pub struct AddSeedInput {
@@ -35,18 +37,27 @@ pub async fn seed_detail(
     let in_plan = queries::is_seed_in_plan(&state.db, id, current_year).await?;
     let is_skipped = queries::is_seed_skipped(&state.db, id, current_year).await?;
     let plan_start_method = if in_plan {
-        Some(queries::get_plan_start_method(&state.db, id, current_year).await?.unwrap_or_default())
+        Some(
+            queries::get_plan_start_method(&state.db, id, current_year)
+                .await?
+                .unwrap_or_default(),
+        )
     } else {
         None
     };
 
-    Ok(seed_detail_page(&seed, &images, &purchases, &events, in_plan, is_skipped, plan_start_method.as_deref()))
+    Ok(seed_detail_page(
+        &seed,
+        &images,
+        &purchases,
+        &events,
+        in_plan,
+        is_skipped,
+        plan_start_method.as_deref(),
+    ))
 }
 
-pub async fn add_seed(
-    State(state): State<AppState>,
-    Form(input): Form<AddSeedInput>,
-) -> Response {
+pub async fn add_seed(State(state): State<AppState>, Form(input): Form<AddSeedInput>) -> Response {
     // Validate URL — must be a botanicalinterests.com URL containing /products/
     let url = input.url.trim();
     let host_ok = url.starts_with("https://www.botanicalinterests.com/")
@@ -123,8 +134,13 @@ pub async fn add_purchase_handler(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("Seed {} not found", seed_id)))?;
 
-    queries::insert_purchase(&state.db, seed_id, input.purchase_year, input.notes.as_deref())
-        .await?;
+    queries::insert_purchase(
+        &state.db,
+        seed_id,
+        input.purchase_year,
+        input.notes.as_deref(),
+    )
+    .await?;
 
     let purchases = queries::list_purchases_for_seed(&state.db, seed_id).await?;
     Ok(seed_purchases_section(&seed, &purchases))
@@ -146,8 +162,13 @@ pub async fn update_purchase_handler(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("Seed {} not found", seed_id)))?;
 
-    queries::update_purchase(&state.db, purchase_id, input.purchase_year, input.notes.as_deref())
-        .await?;
+    queries::update_purchase(
+        &state.db,
+        purchase_id,
+        input.purchase_year,
+        input.notes.as_deref(),
+    )
+    .await?;
 
     let purchases = queries::list_purchases_for_seed(&state.db, seed_id).await?;
     Ok(seed_purchases_section(&seed, &purchases))
@@ -249,15 +270,31 @@ pub async fn add_event_handler(
     let today = chrono::Local::now().date_naive();
     let current_year = today.year() as i64;
 
-    let event_type = if input.event_type.is_empty() { "comment" } else { &input.event_type };
+    let event_type = if input.event_type.is_empty() {
+        "comment"
+    } else {
+        &input.event_type
+    };
     let event_date = if input.event_date.is_empty() {
         today.format("%Y-%m-%d").to_string()
     } else {
         input.event_date.clone()
     };
-    let notes = if input.notes.is_empty() { None } else { Some(input.notes.as_str()) };
+    let notes = if input.notes.is_empty() {
+        None
+    } else {
+        Some(input.notes.as_str())
+    };
 
-    queries::insert_event(&state.db, seed_id, current_year, event_type, &event_date, notes).await?;
+    queries::insert_event(
+        &state.db,
+        seed_id,
+        current_year,
+        event_type,
+        &event_date,
+        notes,
+    )
+    .await?;
 
     let events = queries::list_events_for_seed(&state.db, seed_id, current_year).await?;
     Ok(seed_events_section(&seed, &events, current_year as i32))
@@ -283,8 +320,16 @@ pub async fn update_event_handler(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("Seed {} not found", seed_id)))?;
 
-    let event_type = if input.event_type.is_empty() { "comment" } else { &input.event_type };
-    let notes = if input.notes.is_empty() { None } else { Some(input.notes.as_str()) };
+    let event_type = if input.event_type.is_empty() {
+        "comment"
+    } else {
+        &input.event_type
+    };
+    let notes = if input.notes.is_empty() {
+        None
+    } else {
+        Some(input.notes.as_str())
+    };
 
     queries::update_event(&state.db, event_id, event_type, &input.event_date, notes).await?;
 
@@ -373,18 +418,11 @@ pub async fn delete_seed_handler(
     let image_dir = state.data_dir.join("images").join(id.to_string());
     let _ = std::fs::remove_dir_all(&image_dir);
 
-    Ok((
-        StatusCode::OK,
-        [("HX-Redirect", "/".to_string())],
-        "",
-    )
-        .into_response())
+    Ok((StatusCode::OK, [("HX-Redirect", "/".to_string())], "").into_response())
 }
 
 /// POST /seeds/reparse - Re-parse all seeds from stored raw_html
-pub async fn reparse_all(
-    State(state): State<AppState>,
-) -> Result<Markup, AppError> {
+pub async fn reparse_all(State(state): State<AppState>) -> Result<Markup, AppError> {
     let count = queries::reparse_all_seeds(&state.db).await?;
     tracing::info!("Re-parsed {} seeds from stored HTML", count);
     Ok(crate::templates::settings::reparse_success(count))
@@ -405,7 +443,11 @@ fn default_start_method(seed: &crate::db::models::Seed) -> Option<&'static str> 
     let has_indoor = timing.start_indoors_weeks_before.is_some();
     let has_outdoor = timing.direct_sow_weeks_relative.is_some();
     match (has_indoor, has_outdoor) {
-        (true, true) => Some(if timing.indoor_start_recommended { "indoor" } else { "outdoor" }),
+        (true, true) => Some(if timing.indoor_start_recommended {
+            "indoor"
+        } else {
+            "outdoor"
+        }),
         (true, false) => Some("indoor"),
         (false, true) => Some("outdoor"),
         (false, false) => None,
@@ -451,16 +493,31 @@ pub async fn toggle_plan(
 
         if indoor.is_some() && outdoor.is_some() {
             let plan_start_method = if in_plan {
-                Some(queries::get_plan_start_method(&state.db, seed_id, current_year).await?.unwrap_or_default())
+                Some(
+                    queries::get_plan_start_method(&state.db, seed_id, current_year)
+                        .await?
+                        .unwrap_or_default(),
+                )
             } else {
                 None
             };
             return Ok(crate::templates::schedule::seed_detail_dual_timeline(
-                &seed, &timing, current_year_i32, in_plan, is_skipped, plan_start_method.as_deref(), &events,
+                &seed,
+                &timing,
+                current_year_i32,
+                in_plan,
+                is_skipped,
+                plan_start_method.as_deref(),
+                &events,
             ));
         } else {
             return Ok(crate::templates::schedule::seed_detail_timeline(
-                &seed, &timing, current_year_i32, in_plan, is_skipped, &events,
+                &seed,
+                &timing,
+                current_year_i32,
+                in_plan,
+                is_skipped,
+                &events,
             ));
         }
     }
@@ -502,6 +559,12 @@ pub async fn set_start_method(
     let events = queries::list_events_for_seed(&state.db, seed_id, current_year).await?;
 
     Ok(crate::templates::schedule::seed_detail_dual_timeline(
-        &seed, &timing, current_year_i32, true, false, method, &events,
+        &seed,
+        &timing,
+        current_year_i32,
+        true,
+        false,
+        method,
+        &events,
     ))
 }

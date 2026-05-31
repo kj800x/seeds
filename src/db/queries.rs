@@ -1,6 +1,6 @@
 use sqlx::SqlitePool;
 
-use super::models::{Seed, SeasonPlan, SeasonPlanEvent, SeedImage, SeedPurchase};
+use super::models::{SeasonPlan, SeasonPlanEvent, Seed, SeedImage, SeedPurchase};
 
 pub async fn list_seeds(pool: &SqlitePool) -> Result<Vec<Seed>, sqlx::Error> {
     sqlx::query_as::<_, Seed>("SELECT * FROM seeds ORDER BY created_at DESC")
@@ -19,18 +19,14 @@ pub async fn get_seed_images(
     pool: &SqlitePool,
     seed_id: i64,
 ) -> Result<Vec<SeedImage>, sqlx::Error> {
-    sqlx::query_as::<_, SeedImage>(
-        "SELECT * FROM seed_images WHERE seed_id = ? ORDER BY position",
-    )
-    .bind(seed_id)
-    .fetch_all(pool)
-    .await
+    sqlx::query_as::<_, SeedImage>("SELECT * FROM seed_images WHERE seed_id = ? ORDER BY position")
+        .bind(seed_id)
+        .fetch_all(pool)
+        .await
 }
 
 /// Returns (seed_id, local_filename) for the first image of each seed.
-pub async fn first_image_per_seed(
-    pool: &SqlitePool,
-) -> Result<Vec<(i64, String)>, sqlx::Error> {
+pub async fn first_image_per_seed(pool: &SqlitePool) -> Result<Vec<(i64, String)>, sqlx::Error> {
     sqlx::query_as::<_, (i64, String)>(
         "SELECT seed_id, local_filename FROM seed_images WHERE position = (SELECT MIN(position) FROM seed_images si WHERE si.seed_id = seed_images.seed_id) GROUP BY seed_id",
     )
@@ -222,10 +218,7 @@ pub async fn list_purchases_for_seed(
     .await
 }
 
-pub async fn get_purchase(
-    pool: &SqlitePool,
-    id: i64,
-) -> Result<Option<SeedPurchase>, sqlx::Error> {
+pub async fn get_purchase(pool: &SqlitePool, id: i64) -> Result<Option<SeedPurchase>, sqlx::Error> {
     sqlx::query_as::<_, SeedPurchase>("SELECT * FROM seed_purchases WHERE id = ?")
         .bind(id)
         .fetch_optional(pool)
@@ -238,14 +231,13 @@ pub async fn insert_purchase(
     purchase_year: i64,
     notes: Option<&str>,
 ) -> Result<i64, sqlx::Error> {
-    let result = sqlx::query(
-        "INSERT INTO seed_purchases (seed_id, purchase_year, notes) VALUES (?, ?, ?)",
-    )
-    .bind(seed_id)
-    .bind(purchase_year)
-    .bind(notes)
-    .execute(pool)
-    .await?;
+    let result =
+        sqlx::query("INSERT INTO seed_purchases (seed_id, purchase_year, notes) VALUES (?, ?, ?)")
+            .bind(seed_id)
+            .bind(purchase_year)
+            .bind(notes)
+            .execute(pool)
+            .await?;
 
     Ok(result.last_insert_rowid())
 }
@@ -256,14 +248,12 @@ pub async fn update_purchase(
     purchase_year: i64,
     notes: Option<&str>,
 ) -> Result<bool, sqlx::Error> {
-    let result = sqlx::query(
-        "UPDATE seed_purchases SET purchase_year = ?, notes = ? WHERE id = ?",
-    )
-    .bind(purchase_year)
-    .bind(notes)
-    .bind(id)
-    .execute(pool)
-    .await?;
+    let result = sqlx::query("UPDATE seed_purchases SET purchase_year = ?, notes = ? WHERE id = ?")
+        .bind(purchase_year)
+        .bind(notes)
+        .bind(id)
+        .execute(pool)
+        .await?;
 
     Ok(result.rows_affected() > 0)
 }
@@ -279,9 +269,7 @@ pub async fn delete_purchase(pool: &SqlitePool, id: i64) -> Result<bool, sqlx::E
 
 /// Get the newest purchase year for each seed (for seed list display).
 /// Returns (seed_id, newest_purchase_year) pairs.
-pub async fn newest_purchase_per_seed(
-    pool: &SqlitePool,
-) -> Result<Vec<(i64, i64)>, sqlx::Error> {
+pub async fn newest_purchase_per_seed(pool: &SqlitePool) -> Result<Vec<(i64, i64)>, sqlx::Error> {
     let rows = sqlx::query_as::<_, (i64, i64)>(
         "SELECT seed_id, MAX(purchase_year) FROM seed_purchases GROUP BY seed_id",
     )
@@ -292,9 +280,7 @@ pub async fn newest_purchase_per_seed(
 }
 
 /// Count purchases per seed
-pub async fn purchase_count_per_seed(
-    pool: &SqlitePool,
-) -> Result<Vec<(i64, i64)>, sqlx::Error> {
+pub async fn purchase_count_per_seed(pool: &SqlitePool) -> Result<Vec<(i64, i64)>, sqlx::Error> {
     let rows = sqlx::query_as::<_, (i64, i64)>(
         "SELECT seed_id, COUNT(*) FROM seed_purchases GROUP BY seed_id",
     )
@@ -307,17 +293,26 @@ pub async fn purchase_count_per_seed(
 // --- Season Plan CRUD ---
 
 /// List all season plans for a given year.
-pub async fn list_season_plans(pool: &SqlitePool, year: i64) -> Result<Vec<SeasonPlan>, sqlx::Error> {
-    sqlx::query_as::<_, SeasonPlan>("SELECT * FROM season_plans WHERE year = ? ORDER BY created_at DESC")
-        .bind(year)
-        .fetch_all(pool)
-        .await
+pub async fn list_season_plans(
+    pool: &SqlitePool,
+    year: i64,
+) -> Result<Vec<SeasonPlan>, sqlx::Error> {
+    sqlx::query_as::<_, SeasonPlan>(
+        "SELECT * FROM season_plans WHERE year = ? ORDER BY created_at DESC",
+    )
+    .bind(year)
+    .fetch_all(pool)
+    .await
 }
 
 /// Check if a seed is actively in a given year's plan (not skipped).
-pub async fn is_seed_in_plan(pool: &SqlitePool, seed_id: i64, year: i64) -> Result<bool, sqlx::Error> {
+pub async fn is_seed_in_plan(
+    pool: &SqlitePool,
+    seed_id: i64,
+    year: i64,
+) -> Result<bool, sqlx::Error> {
     let row = sqlx::query_as::<_, (i64,)>(
-        "SELECT COUNT(*) FROM season_plans WHERE seed_id = ? AND year = ? AND status = 'active'"
+        "SELECT COUNT(*) FROM season_plans WHERE seed_id = ? AND year = ? AND status = 'active'",
     )
     .bind(seed_id)
     .bind(year)
@@ -328,9 +323,13 @@ pub async fn is_seed_in_plan(pool: &SqlitePool, seed_id: i64, year: i64) -> Resu
 }
 
 /// Check if a seed is skipped for a given year.
-pub async fn is_seed_skipped(pool: &SqlitePool, seed_id: i64, year: i64) -> Result<bool, sqlx::Error> {
+pub async fn is_seed_skipped(
+    pool: &SqlitePool,
+    seed_id: i64,
+    year: i64,
+) -> Result<bool, sqlx::Error> {
     let row = sqlx::query_as::<_, (i64,)>(
-        "SELECT COUNT(*) FROM season_plans WHERE seed_id = ? AND year = ? AND status = 'skipped'"
+        "SELECT COUNT(*) FROM season_plans WHERE seed_id = ? AND year = ? AND status = 'skipped'",
     )
     .bind(seed_id)
     .bind(year)
@@ -342,9 +341,13 @@ pub async fn is_seed_skipped(pool: &SqlitePool, seed_id: i64, year: i64) -> Resu
 
 /// Cycle a seed's plan status: none -> active -> skipped -> none.
 /// Returns the new status: Some("active"), Some("skipped"), or None (removed).
-pub async fn cycle_plan_status(pool: &SqlitePool, seed_id: i64, year: i64) -> Result<Option<String>, sqlx::Error> {
+pub async fn cycle_plan_status(
+    pool: &SqlitePool,
+    seed_id: i64,
+    year: i64,
+) -> Result<Option<String>, sqlx::Error> {
     let current = sqlx::query_as::<_, (String,)>(
-        "SELECT status FROM season_plans WHERE seed_id = ? AND year = ?"
+        "SELECT status FROM season_plans WHERE seed_id = ? AND year = ?",
     )
     .bind(seed_id)
     .bind(year)
@@ -394,25 +397,32 @@ pub async fn list_planned_seeds(pool: &SqlitePool, year: i64) -> Result<Vec<Seed
 }
 
 /// List all seeds with their start_method for a given year's plan.
-pub async fn list_planned_seeds_with_method(pool: &SqlitePool, year: i64) -> Result<Vec<(Seed, Option<String>)>, sqlx::Error> {
+pub async fn list_planned_seeds_with_method(
+    pool: &SqlitePool,
+    year: i64,
+) -> Result<Vec<(Seed, Option<String>)>, sqlx::Error> {
     // sqlx doesn't directly support this tuple, so we query separately
     let seeds = list_planned_seeds(pool, year).await?;
     let plans = list_season_plans(pool, year).await?;
 
-    let method_map: std::collections::HashMap<i64, Option<String>> = plans.into_iter()
+    let method_map: std::collections::HashMap<i64, Option<String>> = plans
+        .into_iter()
         .map(|p| (p.seed_id, p.start_method))
         .collect();
 
-    Ok(seeds.into_iter().map(|s| {
-        let method = method_map.get(&s.id).cloned().flatten();
-        (s, method)
-    }).collect())
+    Ok(seeds
+        .into_iter()
+        .map(|s| {
+            let method = method_map.get(&s.id).cloned().flatten();
+            (s, method)
+        })
+        .collect())
 }
 
 /// Get all actively planned seed IDs for a given year (efficient for set lookup).
 pub async fn planned_seed_ids(pool: &SqlitePool, year: i64) -> Result<Vec<i64>, sqlx::Error> {
     let rows = sqlx::query_as::<_, (i64,)>(
-        "SELECT seed_id FROM season_plans WHERE year = ? AND status = 'active'"
+        "SELECT seed_id FROM season_plans WHERE year = ? AND status = 'active'",
     )
     .bind(year)
     .fetch_all(pool)
@@ -424,7 +434,7 @@ pub async fn planned_seed_ids(pool: &SqlitePool, year: i64) -> Result<Vec<i64>, 
 /// Get all skipped seed IDs for a given year.
 pub async fn skipped_seed_ids(pool: &SqlitePool, year: i64) -> Result<Vec<i64>, sqlx::Error> {
     let rows = sqlx::query_as::<_, (i64,)>(
-        "SELECT seed_id FROM season_plans WHERE year = ? AND status = 'skipped'"
+        "SELECT seed_id FROM season_plans WHERE year = ? AND status = 'skipped'",
     )
     .bind(year)
     .fetch_all(pool)
@@ -434,7 +444,12 @@ pub async fn skipped_seed_ids(pool: &SqlitePool, year: i64) -> Result<Vec<i64>, 
 }
 
 /// Update the start method for a seed in a year's plan.
-pub async fn update_plan_start_method(pool: &SqlitePool, seed_id: i64, year: i64, start_method: Option<&str>) -> Result<(), sqlx::Error> {
+pub async fn update_plan_start_method(
+    pool: &SqlitePool,
+    seed_id: i64,
+    year: i64,
+    start_method: Option<&str>,
+) -> Result<(), sqlx::Error> {
     sqlx::query("UPDATE season_plans SET start_method = ? WHERE seed_id = ? AND year = ?")
         .bind(start_method)
         .bind(seed_id)
@@ -445,9 +460,13 @@ pub async fn update_plan_start_method(pool: &SqlitePool, seed_id: i64, year: i64
 }
 
 /// Get the start method for a specific seed in a year's plan.
-pub async fn get_plan_start_method(pool: &SqlitePool, seed_id: i64, year: i64) -> Result<Option<String>, sqlx::Error> {
+pub async fn get_plan_start_method(
+    pool: &SqlitePool,
+    seed_id: i64,
+    year: i64,
+) -> Result<Option<String>, sqlx::Error> {
     let row = sqlx::query_as::<_, (Option<String>,)>(
-        "SELECT start_method FROM season_plans WHERE seed_id = ? AND year = ?"
+        "SELECT start_method FROM season_plans WHERE seed_id = ? AND year = ?",
     )
     .bind(seed_id)
     .bind(year)
@@ -498,7 +517,11 @@ pub async fn insert_image(pool: &SqlitePool, image: &NewSeedImage) -> Result<(),
 
 // --- Season Plan Events CRUD ---
 
-pub async fn list_events_for_seed(pool: &SqlitePool, seed_id: i64, year: i64) -> Result<Vec<SeasonPlanEvent>, sqlx::Error> {
+pub async fn list_events_for_seed(
+    pool: &SqlitePool,
+    seed_id: i64,
+    year: i64,
+) -> Result<Vec<SeasonPlanEvent>, sqlx::Error> {
     sqlx::query_as::<_, SeasonPlanEvent>(
         "SELECT * FROM season_plan_events WHERE seed_id = ? AND year = ? ORDER BY event_date DESC, created_at DESC"
     )
@@ -515,7 +538,14 @@ pub async fn get_event(pool: &SqlitePool, id: i64) -> Result<Option<SeasonPlanEv
         .await
 }
 
-pub async fn insert_event(pool: &SqlitePool, seed_id: i64, year: i64, event_type: &str, event_date: &str, notes: Option<&str>) -> Result<(), sqlx::Error> {
+pub async fn insert_event(
+    pool: &SqlitePool,
+    seed_id: i64,
+    year: i64,
+    event_type: &str,
+    event_date: &str,
+    notes: Option<&str>,
+) -> Result<(), sqlx::Error> {
     sqlx::query(
         "INSERT INTO season_plan_events (seed_id, year, event_type, event_date, notes) VALUES (?, ?, ?, ?, ?)"
     )
@@ -529,9 +559,15 @@ pub async fn insert_event(pool: &SqlitePool, seed_id: i64, year: i64, event_type
     Ok(())
 }
 
-pub async fn update_event(pool: &SqlitePool, id: i64, event_type: &str, event_date: &str, notes: Option<&str>) -> Result<(), sqlx::Error> {
+pub async fn update_event(
+    pool: &SqlitePool,
+    id: i64,
+    event_type: &str,
+    event_date: &str,
+    notes: Option<&str>,
+) -> Result<(), sqlx::Error> {
     sqlx::query(
-        "UPDATE season_plan_events SET event_type = ?, event_date = ?, notes = ? WHERE id = ?"
+        "UPDATE season_plan_events SET event_type = ?, event_date = ?, notes = ? WHERE id = ?",
     )
     .bind(event_type)
     .bind(event_date)

@@ -1,11 +1,13 @@
 use chrono::Datelike;
-use maud::{html, Markup, PreEscaped};
+use maud::{Markup, PreEscaped, html};
 
-use crate::db::models::{Seed, SeasonPlanEvent, SeedImage, SeedPurchase};
-use crate::schedule::{parse_planting_timing_from_fields, compute_indoor_timeline, compute_outdoor_timeline};
-use crate::viability::estimate_viability;
 use super::layout::layout;
-use super::schedule::{seed_detail_timeline, seed_detail_dual_timeline};
+use super::schedule::{seed_detail_dual_timeline, seed_detail_timeline};
+use crate::db::models::{SeasonPlanEvent, Seed, SeedImage, SeedPurchase};
+use crate::schedule::{
+    compute_indoor_timeline, compute_outdoor_timeline, parse_planting_timing_from_fields,
+};
+use crate::viability::estimate_viability;
 
 /// Render the seed purchases section with viability per purchase.
 /// Used by both the full page template and the HTMX fragment handlers.
@@ -99,7 +101,8 @@ pub const EVENT_TYPES: &[(&str, &str)] = &[
 ];
 
 fn event_type_label(event_type: &str) -> &str {
-    EVENT_TYPES.iter()
+    EVENT_TYPES
+        .iter()
         .find(|(k, _)| *k == event_type)
         .map(|(_, v)| *v)
         .unwrap_or(event_type)
@@ -188,7 +191,15 @@ fn detail_item(label: &str, value: &Option<String>) -> Markup {
     }
 }
 
-pub fn seed_detail_page(seed: &Seed, images: &[SeedImage], purchases: &[SeedPurchase], events: &[SeasonPlanEvent], in_plan: bool, is_skipped: bool, plan_start_method: Option<&str>) -> Markup {
+pub fn seed_detail_page(
+    seed: &Seed,
+    images: &[SeedImage],
+    purchases: &[SeedPurchase],
+    events: &[SeasonPlanEvent],
+    in_plan: bool,
+    is_skipped: bool,
+    plan_start_method: Option<&str>,
+) -> Markup {
     let hero_image = images.iter().find(|img| img.position == 1);
     let current_year = chrono::Local::now().year();
     let timing = parse_planting_timing_from_fields(
