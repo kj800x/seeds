@@ -1,4 +1,4 @@
-use maud::{html, Markup, DOCTYPE};
+use maud::{DOCTYPE, Markup, html};
 
 pub fn layout(title: &str, content: Markup) -> Markup {
     layout_with_nav(title, "", content)
@@ -6,7 +6,11 @@ pub fn layout(title: &str, content: Markup) -> Markup {
 
 pub fn layout_with_nav(title: &str, active_nav: &str, content: Markup) -> Markup {
     // Determine which nav item is active; default to "seeds" if not specified
-    let active = if active_nav.is_empty() { "seeds" } else { active_nav };
+    let active = if active_nav.is_empty() {
+        "seeds"
+    } else {
+        active_nav
+    };
 
     html! {
         (DOCTYPE)

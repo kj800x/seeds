@@ -1,9 +1,9 @@
-use maud::{html, Markup};
+use maud::{Markup, html};
 use std::collections::{HashMap, HashSet};
 
+use super::layout::layout;
 use crate::db::models::Seed;
 use crate::schedule::SowingStatus;
-use super::layout::layout;
 
 /// Render a plan toggle button for a seed. Used in both the seed list and the toggle POST response.
 pub fn plan_toggle_button(seed_id: i64, in_plan: bool, is_skipped: bool) -> Markup {

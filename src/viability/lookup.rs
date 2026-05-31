@@ -148,7 +148,10 @@ mod tests {
 
     #[test]
     fn lookup_unknown_returns_default() {
-        assert_eq!(lookup_max_years(Some("Unknown Thing"), None), DEFAULT_MAX_YEARS);
+        assert_eq!(
+            lookup_max_years(Some("Unknown Thing"), None),
+            DEFAULT_MAX_YEARS
+        );
     }
 
     #[test]

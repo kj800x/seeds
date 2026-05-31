@@ -1,10 +1,13 @@
 use chrono::{Local, NaiveDate};
-use maud::{html, Markup};
+use maud::{Markup, html};
 
-use crate::db::models::{Seed, SeasonPlanEvent};
-use crate::schedule::{ActionType, PlantingAction, PlantingTiming, compute_seed_timeline, compute_indoor_timeline, compute_outdoor_timeline, compute_timeline_for_method, StartMethod, SeedTimeline};
-use crate::schedule::calculator::{PhaseType, last_frost_date};
 use super::layout::layout_with_nav;
+use crate::db::models::{SeasonPlanEvent, Seed};
+use crate::schedule::calculator::{PhaseType, last_frost_date};
+use crate::schedule::{
+    ActionType, PlantingAction, PlantingTiming, SeedTimeline, StartMethod, compute_indoor_timeline,
+    compute_outdoor_timeline, compute_seed_timeline, compute_timeline_for_method,
+};
 
 /// Timeline spans February 1 through October 31.
 fn timeline_start(year: i32) -> NaiveDate {
@@ -280,28 +283,37 @@ fn render_timeline(
     seeds_with_timing: &[(Seed, PlantingTiming, Option<StartMethod>)],
     year: i32,
 ) -> Markup {
-    let months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
+    let months = [
+        "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
+    ];
 
     // Today line position
     let today = Local::now().date_naive();
     let t_start = timeline_start(year);
     let t_end = timeline_end(year);
     let show_today = today >= t_start && today <= t_end;
-    let today_pct = if show_today { date_to_percent(today, year) } else { 0.0 };
+    let today_pct = if show_today {
+        date_to_percent(today, year)
+    } else {
+        0.0
+    };
 
     // Last frost line
     let frost = last_frost_date(year);
     let frost_pct = date_to_percent(frost, year);
 
     // Compute timelines and sort by earliest phase start date
-    let mut rows: Vec<(&Seed, SeedTimeline)> = seeds_with_timing.iter().map(|(seed, timing, method)| {
-        let timeline = if let Some(m) = method {
-            compute_timeline_for_method(seed, timing, year, *m)
-        } else {
-            compute_seed_timeline(seed, timing, year)
-        };
-        (seed, timeline)
-    }).collect();
+    let mut rows: Vec<(&Seed, SeedTimeline)> = seeds_with_timing
+        .iter()
+        .map(|(seed, timing, method)| {
+            let timeline = if let Some(m) = method {
+                compute_timeline_for_method(seed, timing, year, *m)
+            } else {
+                compute_seed_timeline(seed, timing, year)
+            };
+            (seed, timeline)
+        })
+        .collect();
     rows.sort_by_key(|(_, tl)| tl.phases.first().map(|p| p.start).unwrap_or(NaiveDate::MAX));
 
     html! {
@@ -354,7 +366,14 @@ fn render_timeline(
 }
 
 /// Render a mini timeline for the seed detail page.
-pub fn seed_detail_timeline(seed: &Seed, timing: &PlantingTiming, year: i32, in_plan: bool, is_skipped: bool, events: &[SeasonPlanEvent]) -> Markup {
+pub fn seed_detail_timeline(
+    seed: &Seed,
+    timing: &PlantingTiming,
+    year: i32,
+    in_plan: bool,
+    is_skipped: bool,
+    events: &[SeasonPlanEvent],
+) -> Markup {
     let timeline = compute_seed_timeline(seed, timing, year);
     let event_refs: Vec<&SeasonPlanEvent> = events.iter().collect();
 
@@ -380,7 +399,15 @@ pub fn seed_detail_timeline(seed: &Seed, timing: &PlantingTiming, year: i32, in_
 
 /// Render separate indoor and outdoor timelines on the seed detail page,
 /// with a "Recommended" badge on the appropriate one.
-pub fn seed_detail_dual_timeline(seed: &Seed, timing: &PlantingTiming, year: i32, in_plan: bool, is_skipped: bool, plan_start_method: Option<&str>, events: &[SeasonPlanEvent]) -> Markup {
+pub fn seed_detail_dual_timeline(
+    seed: &Seed,
+    timing: &PlantingTiming,
+    year: i32,
+    in_plan: bool,
+    is_skipped: bool,
+    plan_start_method: Option<&str>,
+    events: &[SeasonPlanEvent],
+) -> Markup {
     let indoor = compute_indoor_timeline(seed, timing, year);
     let outdoor = compute_outdoor_timeline(seed, timing, year);
     let event_refs: Vec<&SeasonPlanEvent> = events.iter().collect();
@@ -398,11 +425,13 @@ pub fn seed_detail_dual_timeline(seed: &Seed, timing: &PlantingTiming, year: i32
     let has_outdoor = outdoor.is_some();
 
     // Split events by relevance to indoor vs outdoor timelines
-    let indoor_events: Vec<&SeasonPlanEvent> = event_refs.iter()
+    let indoor_events: Vec<&SeasonPlanEvent> = event_refs
+        .iter()
         .filter(|e| e.event_type == "sow_indoor" || e.event_type == "transplant")
         .copied()
         .collect();
-    let outdoor_events: Vec<&SeasonPlanEvent> = event_refs.iter()
+    let outdoor_events: Vec<&SeasonPlanEvent> = event_refs
+        .iter()
         .filter(|e| e.event_type == "sow_outdoor")
         .copied()
         .collect();
@@ -453,7 +482,14 @@ pub fn seed_detail_dual_timeline(seed: &Seed, timing: &PlantingTiming, year: i32
 }
 
 /// Render plan controls: add-to-plan toggle and optional start method selector.
-fn render_plan_controls(seed: &Seed, in_plan: bool, is_skipped: bool, has_indoor: bool, has_outdoor: bool, plan_start_method: Option<&str>) -> Markup {
+fn render_plan_controls(
+    seed: &Seed,
+    in_plan: bool,
+    is_skipped: bool,
+    has_indoor: bool,
+    has_outdoor: bool,
+    plan_start_method: Option<&str>,
+) -> Markup {
     let (label, class) = if is_skipped {
         ("Skipped", "btn-plan-toggle skipped")
     } else if in_plan {
@@ -516,14 +552,24 @@ fn event_type_marker_label(event_type: &str) -> &str {
 }
 
 /// Render a single timeline bar (reusable for both combined and split views).
-fn render_single_timeline(timeline: &SeedTimeline, year: i32, events: &[&SeasonPlanEvent]) -> Markup {
-    let months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
+fn render_single_timeline(
+    timeline: &SeedTimeline,
+    year: i32,
+    events: &[&SeasonPlanEvent],
+) -> Markup {
+    let months = [
+        "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
+    ];
 
     let today = Local::now().date_naive();
     let t_start = timeline_start(year);
     let t_end = timeline_end(year);
     let show_today = today >= t_start && today <= t_end;
-    let today_pct = if show_today { date_to_percent(today, year) } else { 0.0 };
+    let today_pct = if show_today {
+        date_to_percent(today, year)
+    } else {
+        0.0
+    };
 
     let frost = last_frost_date(year);
     let frost_pct = date_to_percent(frost, year);

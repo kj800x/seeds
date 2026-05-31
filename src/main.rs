@@ -44,27 +44,50 @@ async fn main() {
     let app = Router::new()
         .route("/", get(routes::home::home))
         .route("/search", get(routes::home::search))
-        .route("/seeds/{id}", get(routes::seeds::seed_detail)
-                              .delete(routes::seeds::delete_seed_handler))
-        .route("/seeds/{id}/purchases", get(routes::seeds::purchases_fragment)
-                                        .post(routes::seeds::add_purchase_handler))
-        .route("/seeds/{id}/purchases/{purchase_id}", delete(routes::seeds::delete_purchase_handler)
-                                                      .put(routes::seeds::update_purchase_handler))
-        .route("/seeds/{id}/purchases/{purchase_id}/edit", get(routes::seeds::edit_purchase_form))
-        .route("/seeds/{id}/events", get(routes::seeds::events_fragment)
-                                     .post(routes::seeds::add_event_handler))
-        .route("/seeds/{id}/events/{event_id}", delete(routes::seeds::delete_event_handler)
-                                                 .put(routes::seeds::update_event_handler))
-        .route("/seeds/{id}/events/{event_id}/edit", get(routes::seeds::edit_event_form))
+        .route(
+            "/seeds/{id}",
+            get(routes::seeds::seed_detail).delete(routes::seeds::delete_seed_handler),
+        )
+        .route(
+            "/seeds/{id}/purchases",
+            get(routes::seeds::purchases_fragment).post(routes::seeds::add_purchase_handler),
+        )
+        .route(
+            "/seeds/{id}/purchases/{purchase_id}",
+            delete(routes::seeds::delete_purchase_handler)
+                .put(routes::seeds::update_purchase_handler),
+        )
+        .route(
+            "/seeds/{id}/purchases/{purchase_id}/edit",
+            get(routes::seeds::edit_purchase_form),
+        )
+        .route(
+            "/seeds/{id}/events",
+            get(routes::seeds::events_fragment).post(routes::seeds::add_event_handler),
+        )
+        .route(
+            "/seeds/{id}/events/{event_id}",
+            delete(routes::seeds::delete_event_handler).put(routes::seeds::update_event_handler),
+        )
+        .route(
+            "/seeds/{id}/events/{event_id}/edit",
+            get(routes::seeds::edit_event_form),
+        )
         .route("/seeds/add", post(routes::seeds::add_seed))
         .route("/seeds/reparse", post(routes::seeds::reparse_all))
         .route("/schedule", get(routes::schedule::schedule_page))
         .route("/schedule/list", get(routes::schedule::schedule_list))
         .route("/schedule/week", get(routes::schedule::this_week))
         .route("/plan/toggle/{seed_id}", post(routes::seeds::toggle_plan))
-        .route("/plan/{seed_id}/start-method", post(routes::seeds::set_start_method))
+        .route(
+            "/plan/{seed_id}/start-method",
+            post(routes::seeds::set_start_method),
+        )
         .route("/settings", get(routes::settings::settings_page))
-        .route("/settings/reset-all-data", post(routes::settings::reset_all_data))
+        .route(
+            "/settings/reset-all-data",
+            post(routes::settings::reset_all_data),
+        )
         .nest_service("/static", ServeDir::new("static"))
         .nest_service("/images", ServeDir::new("data/images"))
         .with_state(state);
@@ -80,7 +103,5 @@ async fn main() {
 
     tracing::info!("Seeds app listening on http://{addr}");
 
-    axum::serve(listener, app)
-        .await
-        .expect("Server error");
+    axum::serve(listener, app).await.expect("Server error");
 }

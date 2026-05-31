@@ -48,10 +48,7 @@ pub async fn scrape_and_save(state: &AppState, url: &str) -> Result<i64, AppErro
     let growing = parser::parse_growing_details(&raw_html);
 
     // Build the source URL in canonical form
-    let source_url = format!(
-        "https://www.botanicalinterests.com/products/{}",
-        handle
-    );
+    let source_url = format!("https://www.botanicalinterests.com/products/{}", handle);
 
     // Insert the seed record
     let new_seed = NewSeed {
@@ -96,13 +93,8 @@ pub async fn scrape_and_save(state: &AppState, url: &str) -> Result<i64, AppErro
     let seed_id = queries::insert_seed(&state.db, &new_seed).await?;
 
     // Download images to filesystem
-    let downloaded = images::download_images(
-        &client,
-        &product.images,
-        seed_id,
-        &state.data_dir,
-    )
-    .await;
+    let downloaded =
+        images::download_images(&client, &product.images, seed_id, &state.data_dir).await;
 
     // Insert image records
     for img in &downloaded {

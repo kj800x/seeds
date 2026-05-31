@@ -66,11 +66,7 @@ pub async fn download_images(
                 match resp.bytes().await {
                     Ok(bytes) => {
                         if let Err(e) = tokio::fs::write(&final_path, &bytes).await {
-                            tracing::warn!(
-                                "Failed to write image file {:?}: {}",
-                                final_path,
-                                e
-                            );
+                            tracing::warn!("Failed to write image file {:?}: {}", final_path, e);
                             continue;
                         }
 
@@ -84,11 +80,7 @@ pub async fn download_images(
                         });
                     }
                     Err(e) => {
-                        tracing::warn!(
-                            "Failed to read image bytes from {}: {}",
-                            image.src,
-                            e
-                        );
+                        tracing::warn!("Failed to read image bytes from {}: {}", image.src, e);
                     }
                 }
             }
